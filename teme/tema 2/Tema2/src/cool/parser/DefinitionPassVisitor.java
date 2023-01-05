@@ -26,7 +26,7 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
         }
 
         TypeSymbol sym = new TypeSymbol(c.name.getText(), c.parent);
-        if (!currentScope.add(sym)) {
+        if (!currentScope.add(sym, "type")) {
             SymbolTable.error(c.context, c.name,
                     "Class " + c.name.getText() + " is redefined");
             return null;
@@ -71,7 +71,7 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
         }
 
         IdSymbol sym = new IdSymbol(attribute.name.getToken().getText());
-        if (!currentScope.add(sym)) {
+        if (!currentScope.add(sym, "var")) {
             SymbolTable.error(attribute.context, attribute.name.token,
                     "Class " + ((DefaultScope) currentScope).name + " redefines attribute " +
                             attribute.name.token.getText());
@@ -82,21 +82,153 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
         attribute.symbol = sym;
         attribute.flag = 1;
 
+        if (attribute.value != null) {
+            attribute.value.accept(this);
+        }
+
         return null;
     }
 
     @Override
     public Void visit(Method method) {
+        MethodSymbol sym = new MethodSymbol(method.name.getToken().getText());
+        if (!currentScope.add(sym, "method")) {
+            SymbolTable.error(method.context, method.name.token,
+                    "Class " + ((DefaultScope) currentScope).name + " redefines method " +
+                            method.name.token.getText());
+            return null;
+        }
+
+        currentScope = new DefaultScope(currentScope, method.name.getToken().getText());
+        method.scope = currentScope;
+        method.symbol = sym;
+
+        for (Formal f : method.formals) {
+            f.accept(this);
+            ((MethodSymbol) method.symbol).formals.put(f.name.token.getText(), f.symbol);
+            ((MethodSymbol) method.symbol).formals_list.add(f.symbol);
+            ((IdSymbol) f.symbol).parent = method.symbol;
+        }
+
+        if (method.body != null)
+            method.body.accept(this);
+
+        currentScope = currentScope.getParent();
+
+        return null;
+    }
+
+    @Override
+    public Void visit(Formal formal) {
+        formal.scope = currentScope;
+        formal.symbol = new IdSymbol(formal.name.getToken().getText());
+
+        if (formal.name.token.getText().equals("self")) {
+            SymbolTable.error(formal.context, formal.token,
+                    "Method " + ((DefaultScope) formal.scope).name + " of class " +
+                            ((DefaultScope) formal.scope.getParent()).name +
+                            " has formal parameter with illegal name self");
+            return null;
+        }
+
+        if (((DefaultScope) currentScope).vars.containsKey(formal.name.token.getText())) {
+            SymbolTable.error(formal.context, formal.token,
+                    "Method " + ((DefaultScope) formal.scope).name + " of class " +
+                            ((DefaultScope) formal.scope.getParent()).name +
+                            " redefines formal parameter " + formal.name.token.getText());
+            return null;
+        }
+
+        if (formal.type.getText().equals("SELF_TYPE")) {
+            SymbolTable.error(formal.context, formal.type,
+                    "Method " + ((DefaultScope) formal.scope).name + " of class " +
+                            ((DefaultScope) formal.scope.getParent()).name +
+                            " has formal parameter " + formal.name.token.getText() + " with illegal type SELF_TYPE");
+            return null;
+        }
+
+        if (!currentScope.add(formal.symbol, "var")) {
+            return null;
+        }
+        return null;
+    }
+
+    @Override
+    public Void visit(Let let) {
+        MethodSymbol sym = new MethodSymbol("let");
+
+        currentScope = new DefaultScope(currentScope, "let");
+        let.scope = currentScope;
+        let.symbol = sym;
+
+        for (Var v : let.vars) {
+            v.accept(this);
+            currentScope = new DefaultScope(currentScope, "let");
+            currentScope.add(v.symbol, "var");
+        }
+
+        var aux = currentScope;
+        currentScope = let.scope;
+        let.scope = aux;
+
+        return null;
+    }
+
+    @Override
+    public Void visit(Var v) {
+        IdSymbol sym = new IdSymbol(v.name.getToken().getText());
+        v.symbol = sym;
+        v.scope = currentScope;
+        if (v.name.token.getText().equals("self")) {
+            SymbolTable.error(v.context, v.token,
+                    "Let variable has illegal name self");
+            return null;
+        }
+        if (v.value != null)
+            v.value.accept(this);
+        return null;
+    }
+
+    @Override
+    public Void visit(Case c) {
+        CaseSymbol sym = new CaseSymbol();
+
+        currentScope = new DefaultScope(currentScope, "case");
+        c.scope = currentScope;
+        c.symbol = sym;
+
+        c.value.accept(this);
+
+        for (CaseOpt co : c.options) {
+            co.accept(this);
+            ((CaseSymbol) c.symbol).case_opt.add(co.symbol);
+        }
+        return null;
+    }
+
+    @Override
+    public Void visit(CaseOpt c) {
+        IdSymbol sym = new IdSymbol("caseOpt");
+        c.scope = currentScope;
+        c.symbol = sym;
+
+        if (c.name.token.getText().equals("self")) {
+            SymbolTable.error(c.context, c.token,
+                    "Case variable has illegal name self");
+            return null;
+        }
         return null;
     }
 
     @Override
     public Void visit(Id id) {
+        id.scope = currentScope;
         return null;
     }
 
     @Override
     public Void visit(Int intt) {
+        intt.scope = currentScope;
         return null;
     }
 
@@ -117,6 +249,11 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
 
     @Override
     public Void visit(Assign assign) {
+        if (assign.id.token.getText().equals("self")) {
+            SymbolTable.error(assign.context, assign.token,
+                    "Cannot assign to self");
+        }
+        assign.expr.accept(this);
         return null;
     }
 
@@ -161,16 +298,6 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
     }
 
     @Override
-    public Void visit(Let let) {
-        return null;
-    }
-
-    @Override
-    public Void visit(Var v) {
-        return null;
-    }
-
-    @Override
     public Void visit(IsVoid isVoid) {
         return null;
     }
@@ -186,27 +313,12 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
     }
 
     @Override
-    public Void visit(Formal formal) {
-        return null;
-    }
-
-    @Override
     public Void visit(ExplicitDispatch explDisp) {
         return null;
     }
 
     @Override
     public Void visit(ImplicitDispatch implDisp) {
-        return null;
-    }
-
-    @Override
-    public Void visit(CaseOpt c) {
-        return null;
-    }
-
-    @Override
-    public Void visit(Case c) {
         return null;
     }
 }

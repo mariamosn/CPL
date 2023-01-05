@@ -4,7 +4,10 @@ import java.util.*;
 
 public class DefaultScope implements Scope {
     
-    private Map<String, Symbol> symbols = new LinkedHashMap<>();
+    public Map<String, Symbol> types = new LinkedHashMap<>();
+    public Map<String, Symbol> methods = new LinkedHashMap<>();
+    // public Map<String, Symbol> attributes = new LinkedHashMap<>();
+    public Map<String, Symbol> vars = new LinkedHashMap<>();
     
     private Scope parent;
     public String name;
@@ -20,25 +23,47 @@ public class DefaultScope implements Scope {
     }
 
     @Override
-    public boolean add(Symbol sym) {
+    public boolean add(Symbol sym, String type) {
+        Map<String, Symbol> aux = new LinkedHashMap<>();
+        if (type.equals("type")) {
+            aux = types;
+        } else if (type.equals("attr")) {
+            //aux = attributes;
+        } else if (type.equals("method")) {
+            aux = methods;
+        } else if (type.equals("var")) {
+            aux = vars;
+        }
+
         // Reject duplicates in the same scope.
-        if (symbols.containsKey(sym.getName()))
+        if (aux.containsKey(sym.getName()))
             return false;
-        
-        symbols.put(sym.getName(), sym);
+
+        aux.put(sym.getName(), sym);
         
         return true;
     }
 
     @Override
-    public Symbol lookup(String name) {
-        var sym = symbols.get(name);
+    public Symbol lookup(String name, String type) {
+        Map<String, Symbol> aux = new LinkedHashMap<>();
+        if (type.equals("type")) {
+            aux = types;
+        } else if (type.equals("attr")) {
+            //aux = attributes;
+        } else if (type.equals("method")) {
+            aux = methods;
+        } else if (type.equals("var")) {
+            aux = vars;
+        }
+
+        var sym = aux.get(name);
         
         if (sym != null)
             return sym;
         
         if (parent != null)
-            return parent.lookup(name);
+            return parent.lookup(name, type);
         
         return null;
     }
@@ -50,7 +75,10 @@ public class DefaultScope implements Scope {
     
     @Override
     public String toString() {
-        return symbols.values().toString();
+        return "types:" + types.values().toString() +
+                //"attr:" + attributes.values().toString() +
+                "methods:" + methods.values().toString() +
+                "var:" + vars.values().toString();
     }
 
 }

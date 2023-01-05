@@ -26,7 +26,7 @@ public class TypeSymbol extends Symbol {
             return;
         }
 
-        this.parent = (TypeSymbol) SymbolTable.globals.lookup(parent.getText());
+        this.parent = (TypeSymbol) SymbolTable.globals.lookup(parent.getText(), "type");
     }
 
     // Symboluri aferente tipurilor, definite global
