@@ -46,9 +46,15 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
                             attribute.name.token.getText() + " with undefined type " + attribute.type.getText());
             return null;
         }
-        if (attribute.symbol != null)
+        //attribute.name.accept(this);
+        if (attribute.symbol != null) {
             ((IdSymbol) attribute.symbol).type = (TypeSymbol) attribute.scope.lookup(attribute.type.getText(),
                     "type");
+        }
+        if (attribute.name.symbol != null) {
+            ((IdSymbol) attribute.name.symbol).type = (TypeSymbol) attribute.scope.lookup(attribute.type.getText(),
+                    "type");
+        }
 
         if (attribute.value != null) {
             attribute.value.accept(this);
@@ -101,16 +107,25 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
         for (Var v : let.vars) {
             v.accept(this);
         }
-        return null;
+
+        return let.body.accept(this);
     }
 
     @Override
     public TypeSymbol visit(Case c) {
-        c.value.accept(this);
-        for (CaseOpt co : c.options) {
-            co.accept(this);
+        TypeSymbol value_type = null;
+        if (c.value != null) {
+            c.value.accept(this);
+            if (c.value.symbol != null)
+                ((IdSymbol) c.value.symbol).type = value_type;
         }
-        return null;
+
+        TypeSymbol sym = null;
+        for (CaseOpt co : c.options) {
+            TypeSymbol co_type = co.accept(this);
+            sym = TypeSymbol.lub(sym, co_type);
+        }
+        return sym;
     }
 
     @Override
@@ -121,121 +136,267 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
             return null;
         }
 
-        if (c.scope.lookup(c.type.getText(), "type") == null) {
+        if (c.scope != null)
+            ((IdSymbol) c.symbol).type = (TypeSymbol) c.scope.lookup(c.type.getText(), "type");
+        if (c.symbol != null && ((IdSymbol) c.symbol).type == null) {
             SymbolTable.error(c.context, c.type,
                     "Case variable " + c.name.token.getText() + " has undefined type " + c.type.getText());
+            return null;
         }
-        return null;
+
+        c.value.scope = c.scope;
+        TypeSymbol val_type = c.value.accept(this);
+        return val_type;
     }
 
     @Override
     public TypeSymbol visit(Var v) {
-        if (v.scope.lookup(v.type.getText(), "type") == null) {
+        TypeSymbol id_type = (TypeSymbol) v.scope.lookup(v.type.getText(), "type");
+        if (id_type == null) {
             SymbolTable.error(v.context, v.type,
                     "Let variable " + v.name.token.getText() + " has undefined type " + v.type.getText());
+        } else if (v.name.symbol != null) {
+            ((IdSymbol) v.name.symbol).type = id_type;
         }
-        v.value.accept(this);
+
+        TypeSymbol val_type = null;
+        if (v.value != null) {
+            val_type = v.value.accept(this);
+        }
+
+        TypeSymbol val_type_copy = val_type;
+        while (val_type_copy != null && id_type != val_type_copy) {
+            val_type_copy = val_type_copy.parent;
+        }
+
+        if (val_type != null && id_type != null && val_type_copy == null) {
+            SymbolTable.error(v.context, v.value.token,
+                    "Type " + val_type + " of initialization expression of identifier " +
+                    v.name.token.getText() + " is incompatible with declared type " + id_type);
+        }
+
         return null;
     }
 
     @Override
     public TypeSymbol visit(Id id) {
-        // System.out.println(id.token.getText() + " " + id.scope);
+        IdSymbol sym = null;
         if (!id.token.getText().equals("self") && id.scope != null &&
                 //id.scope.lookup(id.token.getText(), "attr") == null &&
                 id.scope.lookup(id.token.getText(), "var") == null) {
             SymbolTable.error(id.context, id.token,
                     "Undefined identifier " + id.token.getText());
+            return null;
         }
+        if (id.scope != null) {
+            sym = (IdSymbol) id.scope.lookup(id.token.getText(), "var");
+            /*
+            if (sym == null)
+                sym = (IdSymbol) id.scope.lookup(id.token.getText(), "attr");
+
+             */
+            id.symbol = sym;
+        }
+        if (sym != null)
+            return ((IdSymbol) id.symbol).type;
         return null;
     }
 
     @Override
     public TypeSymbol visit(Int intt) {
-        return null;
+        return TypeSymbol.INT;
     }
 
     @Override
     public TypeSymbol visit(If iff) {
-        return null;
+        TypeSymbol cond_type = iff.cond.accept(this);
+        if (cond_type != TypeSymbol.BOOL) {
+            SymbolTable.error(iff.context, iff.cond.token,
+                    "If condition has type " + cond_type + " instead of Bool");
+        }
+
+        TypeSymbol then_type = iff.thenBranch.accept(this);
+        TypeSymbol else_type = iff.elseBranch.accept(this);
+
+        return TypeSymbol.lub(then_type, else_type);
     }
 
     @Override
     public TypeSymbol visit(Str str) {
-        return null;
+        return TypeSymbol.STRING;
     }
 
     @Override
     public TypeSymbol visit(Bool bool) {
-        return null;
+        return TypeSymbol.BOOL;
     }
 
     @Override
     public TypeSymbol visit(Assign assign) {
-        visit(assign.id);
+        TypeSymbol id_type = assign.id.accept(this);
+        TypeSymbol val_type = assign.expr.accept(this);
+
+        TypeSymbol val_type_copy = val_type;
+        while (val_type_copy != null && id_type != val_type_copy) {
+            val_type_copy = val_type_copy.parent;
+        }
+
+        if (id_type != val_type_copy && val_type != null) {
+            SymbolTable.error(assign.context, assign.expr.token,
+                    "Type " + val_type + " of assigned expression is incompatible with declared type " +
+                            id_type + " of identifier " + assign.id.token.getText());
+        }
+
         return null;
     }
 
     @Override
     public TypeSymbol visit(Relational rel) {
-        return null;
+        TypeSymbol op1_type = rel.left.accept(this);
+        if ((rel.token.getText().equals("<") || rel.token.getText().equals("<="))
+                && op1_type != null && op1_type != TypeSymbol.INT) {
+            SymbolTable.error(rel.context, rel.left.token,
+                    "Operand of " + rel.token.getText() + " has type " + op1_type.getName() + " instead of Int");
+            return TypeSymbol.BOOL;
+        }
+
+        TypeSymbol op2_type = rel.right.accept(this);
+        if ((rel.token.getText().equals("<") || rel.token.getText().equals("<="))
+                && op2_type != null && op2_type != TypeSymbol.INT) {
+            SymbolTable.error(rel.context, rel.right.token,
+                    "Operand of " + rel.token.getText() + " has type " + op2_type.getName() + " instead of Int");
+            return TypeSymbol.BOOL;
+        }
+
+        if (rel.token.getText().equals("=") && op1_type != op2_type &&
+                (op1_type == TypeSymbol.INT || op1_type == TypeSymbol.BOOL || op1_type == TypeSymbol.STRING ||
+                        op2_type == TypeSymbol.INT || op2_type == TypeSymbol.BOOL || op2_type == TypeSymbol.STRING)) {
+            SymbolTable.error(rel.context, rel.token,
+                    "Cannot compare " + op1_type + " with " + op2_type);
+        }
+
+        return TypeSymbol.BOOL;
     }
 
     @Override
     public TypeSymbol visit(Plus plus) {
-        return null;
+        TypeSymbol op1_type = plus.left.accept(this);
+        if (op1_type != null && op1_type != TypeSymbol.INT) {
+            SymbolTable.error(plus.context, plus.left.token,
+                    "Operand of + has type " + op1_type.getName() + " instead of Int");
+        }
+
+        TypeSymbol op2_type = plus.right.accept(this);
+        if (op2_type != null && op2_type != TypeSymbol.INT) {
+            SymbolTable.error(plus.context, plus.right.token,
+                    "Operand of + has type " + op2_type.getName() + " instead of Int");
+        }
+        return TypeSymbol.INT;
     }
 
     @Override
     public TypeSymbol visit(Minus minus) {
-        return null;
+        TypeSymbol op1_type = minus.left.accept(this);
+        if (op1_type != null && op1_type != TypeSymbol.INT) {
+            SymbolTable.error(minus.context, minus.left.token,
+                    "Operand of - has type " + op1_type.getName() + " instead of Int");
+        }
+
+        TypeSymbol op2_type = minus.right.accept(this);
+        if (op2_type != null && op2_type != TypeSymbol.INT) {
+            SymbolTable.error(minus.context, minus.right.token,
+                    "Operand of - has type " + op2_type.getName() + " instead of Int");
+        }
+        return TypeSymbol.INT;
     }
 
     @Override
     public TypeSymbol visit(Mult mult) {
-        return null;
+        TypeSymbol op1_type = mult.left.accept(this);
+        if (op1_type != null && op1_type != TypeSymbol.INT) {
+            SymbolTable.error(mult.context, mult.left.token,
+                    "Operand of * has type " + op1_type.getName() + " instead of Int");
+        }
+
+        TypeSymbol op2_type = mult.right.accept(this);
+        if (op2_type != null && op2_type != TypeSymbol.INT) {
+            SymbolTable.error(mult.context, mult.right.token,
+                    "Operand of * has type " + op2_type.getName() + " instead of Int");
+        }
+        return TypeSymbol.INT;
     }
 
     @Override
     public TypeSymbol visit(Div div) {
-        return null;
+        TypeSymbol op1_type = div.left.accept(this);
+        if (op1_type != null && op1_type != TypeSymbol.INT) {
+            SymbolTable.error(div.context, div.left.token,
+                    "Operand of / has type " + op1_type.getName() + " instead of Int");
+        }
+
+        TypeSymbol op2_type = div.right.accept(this);
+        if (op2_type != null && op2_type != TypeSymbol.INT) {
+            SymbolTable.error(div.context, div.right.token,
+                    "Operand of / has type " + op2_type.getName() + " instead of Int");
+        }
+        return TypeSymbol.INT;
     }
 
     @Override
     public TypeSymbol visit(Neg neg) {
-        return null;
+        TypeSymbol op_type = neg.expr.accept(this);
+        if (op_type != null && op_type != TypeSymbol.INT) {
+            SymbolTable.error(neg.context, neg.expr.token,
+                    "Operand of ~ has type " + op_type.getName() + " instead of Int");
+        }
+
+        return TypeSymbol.INT;
     }
 
     @Override
     public TypeSymbol visit(Not not) {
-        return null;
+        TypeSymbol op_type = not.expr.accept(this);
+        if (op_type != null && op_type != TypeSymbol.BOOL) {
+            SymbolTable.error(not.context, not.expr.token,
+                    "Operand of not has type " + op_type.getName() + " instead of Bool");
+        }
+
+        return TypeSymbol.BOOL;
     }
 
     @Override
     public TypeSymbol visit(While w) {
-        return null;
+        TypeSymbol cond_type = w.cond.accept(this);
+        if (cond_type != TypeSymbol.BOOL) {
+            SymbolTable.error(w.context, w.cond.token,
+                    "While condition has type " + cond_type + " instead of Bool");
+        }
+        return TypeSymbol.OBJECT;
     }
 
     @Override
     public TypeSymbol visit(IsVoid isVoid) {
-        return null;
+        return TypeSymbol.BOOL;
     }
 
     @Override
     public TypeSymbol visit(Block block) {
-        return null;
+        TypeSymbol sym = null;
+        for (Expression e : block.body) {
+            sym = e.accept(this);
+        }
+        return sym;
     }
 
     @Override
     public TypeSymbol visit(New n) {
-        /*
-        if (n.scope.lookup(n.type.getText(), "type") == null) {
-            SymbolTable.error(n.context, n.token,
+        TypeSymbol sym = (TypeSymbol) n.scope.lookup(n.type.getText(), "type");
+        if (sym == null) {
+            SymbolTable.error(n.context, n.type,
                     "new is used with undefined type " + n.type.getText());
+            return null;
         }
-
-         */
-        return null;
+        return sym;
     }
 
     @Override

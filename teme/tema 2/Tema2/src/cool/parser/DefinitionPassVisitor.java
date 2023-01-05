@@ -9,6 +9,7 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
     public Void visit(Program program) {
         currentScope = SymbolTable.globals;
         program.scope = currentScope;
+        program.symbol = new Symbol("program");
 
         for (var c : program.stmts) {
             c.accept(this);
@@ -82,6 +83,7 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
         attribute.symbol = sym;
         attribute.flag = 1;
 
+        attribute.name.accept(this);
         if (attribute.value != null) {
             attribute.value.accept(this);
         }
@@ -114,7 +116,6 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
             method.body.accept(this);
 
         currentScope = currentScope.getParent();
-
         return null;
     }
 
@@ -171,6 +172,8 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
         currentScope = let.scope;
         let.scope = aux;
 
+        currentScope = currentScope.getParent();
+
         return null;
     }
 
@@ -184,6 +187,7 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
                     "Let variable has illegal name self");
             return null;
         }
+        v.name.accept(this);
         if (v.value != null)
             v.value.accept(this);
         return null;
@@ -203,13 +207,15 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
             co.accept(this);
             ((CaseSymbol) c.symbol).case_opt.add(co.symbol);
         }
+
+        currentScope = currentScope.getParent();
         return null;
     }
 
     @Override
     public Void visit(CaseOpt c) {
         IdSymbol sym = new IdSymbol("caseOpt");
-        c.scope = currentScope;
+        c.scope = new DefaultScope(currentScope);
         c.symbol = sym;
 
         if (c.name.token.getText().equals("self")) {
@@ -217,11 +223,16 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
                     "Case variable has illegal name self");
             return null;
         }
+
+        c.scope.add(sym, "var");
+
         return null;
     }
 
     @Override
     public Void visit(Id id) {
+        IdSymbol sym = new IdSymbol(id.token.getText());
+        id.symbol = sym;
         id.scope = currentScope;
         return null;
     }
@@ -229,96 +240,152 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
     @Override
     public Void visit(Int intt) {
         intt.scope = currentScope;
+        intt.symbol = new Symbol(intt.token.getText());
         return null;
     }
 
     @Override
     public Void visit(If iff) {
+        iff.symbol = new Symbol("if");
+        iff.scope = currentScope;
+        iff.cond.accept(this);
+        iff.thenBranch.accept(this);
+        iff.elseBranch.accept(this);
         return null;
     }
 
     @Override
     public Void visit(Str str) {
+        str.symbol = new Symbol(str.token.getText());
+        str.scope = currentScope;
         return null;
     }
 
     @Override
     public Void visit(Bool bool) {
+        bool.symbol = new Symbol(bool.token.getText());
+        bool.scope = currentScope;
         return null;
     }
 
     @Override
     public Void visit(Assign assign) {
+        assign.symbol = new Symbol("assign");
+        assign.scope = currentScope;
         if (assign.id.token.getText().equals("self")) {
-            SymbolTable.error(assign.context, assign.token,
+            SymbolTable.error(assign.context, assign.id.token,
                     "Cannot assign to self");
         }
+        assign.id.scope = currentScope;
         assign.expr.accept(this);
         return null;
     }
 
     @Override
     public Void visit(Relational rel) {
+        rel.symbol = new Symbol("rel");
+        rel.scope = currentScope;
+        rel.left.accept(this);
+        rel.right.accept(this);
         return null;
     }
 
     @Override
     public Void visit(Plus plus) {
+        plus.symbol = new Symbol("plus");
+        plus.scope = currentScope;
+        plus.left.accept(this);
+        plus.right.accept(this);
         return null;
     }
 
     @Override
     public Void visit(Minus minus) {
+        minus.symbol = new Symbol("minus");
+        minus.scope = currentScope;
+        minus.left.accept(this);
+        minus.right.accept(this);
         return null;
     }
 
     @Override
     public Void visit(Mult mult) {
+        mult.symbol = new Symbol("mult");
+        mult.scope = currentScope;
+        mult.left.accept(this);
+        mult.right.accept(this);
         return null;
     }
 
     @Override
     public Void visit(Div div) {
+        div.symbol = new Symbol("div");
+        div.scope = currentScope;
+        div.left.accept(this);
+        div.right.accept(this);
         return null;
     }
 
     @Override
     public Void visit(Neg neg) {
+        neg.symbol = new Symbol("neg");
+        neg.scope = currentScope;
+        neg.expr.accept(this);
         return null;
     }
 
     @Override
     public Void visit(Not not) {
+        not.symbol = new Symbol("not");
+        not.scope = currentScope;
+        not.expr.accept(this);
         return null;
     }
 
     @Override
     public Void visit(While w) {
+        w.symbol = new Symbol("while");
+        w.scope = currentScope;
+        w.cond.accept(this);
+        w.body.accept(this);
         return null;
     }
 
     @Override
     public Void visit(IsVoid isVoid) {
+        isVoid.symbol = new Symbol("isVoid");
+        isVoid.scope = currentScope;
+        isVoid.e.accept(this);
         return null;
     }
 
     @Override
     public Void visit(Block block) {
+        block.symbol = new Symbol("block");
+        block.scope = currentScope;
+        for (Expression e : block.body) {
+            e.accept(this);
+        }
         return null;
     }
 
     @Override
     public Void visit(New n) {
+        IdSymbol sym = new IdSymbol("new");
+        n.symbol = sym;
+        n.scope = currentScope;
         return null;
     }
 
     @Override
     public Void visit(ExplicitDispatch explDisp) {
+        explDisp.symbol = new Symbol("explDisp");
         return null;
     }
 
     @Override
     public Void visit(ImplicitDispatch implDisp) {
+        implDisp.symbol = new Symbol("implDisp");
         return null;
     }
 }

@@ -127,7 +127,7 @@ public class ASTConstructionVisitor extends CoolParserBaseVisitor<ASTNode> {
 
     @Override
     public ASTNode visitNot(CoolParser.NotContext ctx) {
-        return new Neg((Expression)visit(ctx.e),
+        return new Not((Expression)visit(ctx.e),
                 ctx.NOT().getSymbol(), ctx);
     }
 

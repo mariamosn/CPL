@@ -2,6 +2,8 @@ package cool.structures;
 
 import org.antlr.v4.runtime.Token;
 
+import java.util.HashSet;
+
 public class TypeSymbol extends Symbol {
     public TypeSymbol parent;
     public Scope scope = null;
@@ -35,4 +37,26 @@ public class TypeSymbol extends Symbol {
     public static final TypeSymbol INT   = new TypeSymbol("Int", OBJECT);
     public static final TypeSymbol STRING = new TypeSymbol("String", OBJECT);
     public static final TypeSymbol BOOL  = new TypeSymbol("Bool", OBJECT);
+
+    public static TypeSymbol lub(TypeSymbol a, TypeSymbol b) {
+        if (a == null)
+            return b;
+        if (b == null)
+            return a;
+
+        HashSet<TypeSymbol> a_parents = new HashSet<>();
+        while (a != null) {
+            a_parents.add(a);
+            a = a.parent;
+        }
+
+        while (b != null) {
+            if (a_parents.contains(b)) {
+                return b;
+            }
+            b = b.parent;
+        }
+
+        return TypeSymbol.OBJECT;
+    }
 }
