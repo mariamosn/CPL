@@ -37,10 +37,8 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
 
     @Override
     public TypeSymbol visit(Attribute attribute) {
-        if (attribute.flag != 0 &&
-                (attribute.scope.lookup(attribute.type.getText(), "type") == null ||
-                !(attribute.scope.lookup(attribute.type.getText(), "type") instanceof TypeSymbol))
-            ){
+        TypeSymbol attr_type = (TypeSymbol) attribute.scope.lookup(attribute.type.getText(), "type");
+        if (attribute.flag != 0 && attr_type == null) {
             SymbolTable.error(attribute.context, attribute.type,
                     "Class " + ((DefaultScope) attribute.scope).name + " has attribute " +
                             attribute.name.token.getText() + " with undefined type " + attribute.type.getText());
@@ -48,16 +46,20 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
         }
         //attribute.name.accept(this);
         if (attribute.symbol != null) {
-            ((IdSymbol) attribute.symbol).type = (TypeSymbol) attribute.scope.lookup(attribute.type.getText(),
-                    "type");
+            ((IdSymbol) attribute.symbol).type = attr_type;
         }
         if (attribute.name.symbol != null) {
-            ((IdSymbol) attribute.name.symbol).type = (TypeSymbol) attribute.scope.lookup(attribute.type.getText(),
-                    "type");
+            ((IdSymbol) attribute.name.symbol).type = attr_type;
         }
 
+        TypeSymbol val_type = null;
         if (attribute.value != null) {
-            attribute.value.accept(this);
+            val_type = attribute.value.accept(this);
+            if (!attr_type.isDesc(val_type)) {
+                SymbolTable.error(attribute.context, attribute.value.token,
+                        "Type " + val_type + " of initialization expression of attribute " +
+                        attribute.name.token.getText() + " is incompatible with declared type " + attr_type);
+            }
         }
 
         return null;
@@ -65,25 +67,31 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
 
     @Override
     public TypeSymbol visit(Method method) {
+        TypeSymbol ret_type;
         if (method.symbol == null)
             return null;
-        if (method.scope != null &&
-                method.scope.lookup(method.type.getText(), "type") == null) {
+        ret_type = (TypeSymbol) method.scope.lookup(method.type.getText(), "type");
+        ((MethodSymbol) method.symbol).type = ret_type;
+        if (ret_type == null) {
             SymbolTable.error(method.context, method.token,
                     "Class " + ((DefaultScope) method.scope.getParent()).name + " has method " +
                     method.name.token.getText() + " with undefined return type " +
                     method.type.getText());
             return null;
-        } else if (method.scope != null) {
-            ((MethodSymbol) method.symbol).type = (TypeSymbol) method.scope.lookup(method.type.getText(), "type");
         }
 
         for (Formal f : method.formals) {
             f.accept(this);
         }
-        if (method.body != null);
-            method.body.accept(this);
-        return null;
+
+        TypeSymbol body_type = method.body.accept(this);
+        if (ret_type != null && !ret_type.isDesc(body_type)) {
+            SymbolTable.error(method.context, method.body.token,
+                    "Type " + body_type + " of the body of method " + method.name.token.getText() +
+                    " is incompatible with declared return type " + ret_type);
+        }
+
+        return ret_type;
     }
 
     @Override
@@ -164,12 +172,7 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
             val_type = v.value.accept(this);
         }
 
-        TypeSymbol val_type_copy = val_type;
-        while (val_type_copy != null && id_type != val_type_copy) {
-            val_type_copy = val_type_copy.parent;
-        }
-
-        if (val_type != null && id_type != null && val_type_copy == null) {
+        if (id_type != null && !id_type.isDesc(val_type)) {
             SymbolTable.error(v.context, v.value.token,
                     "Type " + val_type + " of initialization expression of identifier " +
                     v.name.token.getText() + " is incompatible with declared type " + id_type);
@@ -236,12 +239,7 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
         TypeSymbol id_type = assign.id.accept(this);
         TypeSymbol val_type = assign.expr.accept(this);
 
-        TypeSymbol val_type_copy = val_type;
-        while (val_type_copy != null && id_type != val_type_copy) {
-            val_type_copy = val_type_copy.parent;
-        }
-
-        if (id_type != val_type_copy && val_type != null) {
+        if (id_type != null && !id_type.isDesc(val_type)) {
             SymbolTable.error(assign.context, assign.expr.token,
                     "Type " + val_type + " of assigned expression is incompatible with declared type " +
                             id_type + " of identifier " + assign.id.token.getText());

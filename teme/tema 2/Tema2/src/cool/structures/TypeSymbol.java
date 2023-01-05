@@ -59,4 +59,18 @@ public class TypeSymbol extends Symbol {
 
         return TypeSymbol.OBJECT;
     }
+
+    public boolean isDesc (TypeSymbol a) {
+        if (a == null)
+            return true;
+
+        while (a != null) {
+            if (a == this) {
+                return true;
+            }
+            a = a.parent;
+        }
+
+        return false;
+    }
 }
