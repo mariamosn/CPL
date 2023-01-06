@@ -61,7 +61,7 @@ public class DefaultScope implements Scope {
         
         if (sym != null)
             return sym;
-        
+
         if (parent != null)
             return parent.lookup(name, type);
         
@@ -75,10 +75,28 @@ public class DefaultScope implements Scope {
     
     @Override
     public String toString() {
+        LinkedList<Symbol> t = new LinkedList<>(types.values());
+        LinkedList<Symbol> m = new LinkedList<>(methods.values());
+        LinkedList<Symbol> v = new LinkedList<>(vars.values());
+
+        Scope crt = parent;
+        while (crt != null) {
+            t.addAll(((DefaultScope) crt).types.values());
+            m.addAll(((DefaultScope) crt).methods.values());
+            v.addAll(((DefaultScope) crt).vars.values());
+            crt = ((DefaultScope) crt).parent;
+        }
+
+        return "types:" + t +
+                "methods:" + m +
+                "var:" + v;
+        /*
         return "types:" + types.values().toString() +
                 //"attr:" + attributes.values().toString() +
                 "methods:" + methods.values().toString() +
                 "var:" + vars.values().toString();
+
+         */
     }
 
 }

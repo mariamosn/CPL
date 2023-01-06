@@ -3,6 +3,7 @@ package cool.parser;
 import cool.structures.*;
 
 public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
+    TypeSymbol self_type = null;
 
     @Override
     public TypeSymbol visit(Program program) {
@@ -14,8 +15,10 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
 
     @Override
     public TypeSymbol visit(Class c) {
+        TypeSymbol old_self_type = self_type;
         if (c.scope == null || c.scope.lookup(c.name.getText(), "type") == null)
             return null;
+        self_type = (TypeSymbol) c.scope.lookup(c.name.getText(), "type");
 
         if (c.parent != null && c.scope.lookup(c.parent.getText(), "type") == null) {
             SymbolTable.error(c.context, c.parent,
@@ -32,6 +35,8 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
             f.accept(this);
         }
 
+        self_type = old_self_type;
+
         return null;
     }
 
@@ -44,7 +49,7 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
                             attribute.name.token.getText() + " with undefined type " + attribute.type.getText());
             return null;
         }
-        //attribute.name.accept(this);
+
         if (attribute.symbol != null) {
             ((IdSymbol) attribute.symbol).type = attr_type;
         }
@@ -52,7 +57,7 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
             ((IdSymbol) attribute.name.symbol).type = attr_type;
         }
 
-        TypeSymbol val_type = null;
+        TypeSymbol val_type;
         if (attribute.value != null) {
             val_type = attribute.value.accept(this);
             if (!attr_type.isDesc(val_type)) {
@@ -95,8 +100,13 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
     }
 
     @Override
-    public TypeSymbol visit(Formal formal) {
+    public TypeSymbol visit(Formal formal) {;
         ((IdSymbol) formal.symbol).type = (TypeSymbol) formal.scope.lookup(formal.type.getText(), "type");
+        for (Symbol f : ((MethodSymbol) ((IdSymbol) formal.symbol).parent).formals_list) {
+            if (f.getName().equals(formal.name.token.getText())) {
+                ((IdSymbol) f).type = ((IdSymbol) formal.symbol).type;
+            }
+        }
 
         if (formal.scope.lookup(formal.type.getText(), "type") == null &&
                 !formal.type.getText().equals("SELF_TYPE")) {
@@ -105,8 +115,8 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
                             ((DefaultScope) formal.scope.getParent()).name +
                             " has formal parameter " + formal.name.token.getText() +
                             " with undefined type " + formal.type.getText());
+            return null;
         }
-
         return null;
     }
 
@@ -183,9 +193,13 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
 
     @Override
     public TypeSymbol visit(Id id) {
+        if (id.token.getText().equals("self")) {
+            id.symbol = new IdSymbol("self");
+            ((IdSymbol) id.symbol).type = self_type;
+            return self_type;
+        }
         IdSymbol sym = null;
         if (!id.token.getText().equals("self") && id.scope != null &&
-                //id.scope.lookup(id.token.getText(), "attr") == null &&
                 id.scope.lookup(id.token.getText(), "var") == null) {
             SymbolTable.error(id.context, id.token,
                     "Undefined identifier " + id.token.getText());
@@ -193,11 +207,6 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
         }
         if (id.scope != null) {
             sym = (IdSymbol) id.scope.lookup(id.token.getText(), "var");
-            /*
-            if (sym == null)
-                sym = (IdSymbol) id.scope.lookup(id.token.getText(), "attr");
-
-             */
             id.symbol = sym;
         }
         if (sym != null)
@@ -399,11 +408,106 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
 
     @Override
     public TypeSymbol visit(ExplicitDispatch explDisp) {
+        TypeSymbol entity_type = explDisp.entity.accept(this);
+        TypeSymbol at_type = null;
+        TypeSymbol actual_type = entity_type;
+        MethodSymbol m_sym = null;
+
+        if (explDisp.atType != null && !explDisp.atType.getText().equals("SELF_TYPE")) {
+            at_type = (TypeSymbol) explDisp.scope.lookup(explDisp.atType.getText(), "type");
+            if (at_type == null) {
+                SymbolTable.error(explDisp.context, explDisp.atType,
+                        "Type " + explDisp.atType.getText() + " of static dispatch is undefined");
+                return null;
+            }
+
+            if (!at_type.isDesc(entity_type)) {
+                SymbolTable.error(explDisp.context, explDisp.atType,
+                        "Type " + at_type + " of static dispatch is not a superclass of type " + entity_type);
+                return null;
+            }
+            actual_type = at_type;
+        }
+        ((DispSymbol) explDisp.symbol).type = actual_type;
+
+        if (actual_type == null)
+            return null;
+
+        TypeSymbol crt = actual_type;
+        while (crt != null) {
+            if (crt.scope != null) {
+                m_sym = (MethodSymbol) crt.scope.lookup(explDisp.method.token.getText(), "method");
+                if (m_sym != null) {
+                    break;
+                }
+            }
+            crt = crt.parent;
+        }
+        if (m_sym == null) {
+            SymbolTable.error(explDisp.context, explDisp.method.token,
+                    "Undefined method " + explDisp.method.token.getText() + " in class " + actual_type);
+            return null;
+        }
+
+        ((DispSymbol) explDisp.symbol).method = m_sym;
+
+        if (explDisp.params.size() != m_sym.formals_list.size()) {
+            SymbolTable.error(explDisp.context, explDisp.method.token,
+                    "Method " + explDisp.method.token.getText() + " of class " + actual_type +
+                            " is applied to wrong number of arguments");
+            return null;
+        }
+
+        for (Expression p : explDisp.params) {
+            TypeSymbol p_type = p.accept(this);
+            ((DispSymbol) explDisp.symbol).param_types.add(p_type);
+        }
+
+        if (m_sym.type != null)
+            return (TypeSymbol) SymbolTable.globals.lookup(m_sym.type.getName(), "type");
         return null;
     }
 
     @Override
     public TypeSymbol visit(ImplicitDispatch implDisp) {
+
+        MethodSymbol m_sym = null;
+
+        TypeSymbol crt = self_type;
+        while (crt != null) {
+            if (crt.scope != null) {
+                m_sym = (MethodSymbol) crt.scope.lookup(implDisp.method.token.getText(), "method");
+                if (m_sym != null) {
+                    break;
+                }
+            }
+            crt = crt.parent;
+        }
+        if (m_sym == null) {
+            SymbolTable.error(implDisp.context, implDisp.method.token,
+                    "Undefined method " + implDisp.method.token.getText() + " in class " + self_type);
+            return null;
+        }
+
+        ((DispSymbol) implDisp.symbol).method = m_sym;
+        ((DispSymbol) implDisp.symbol).type = self_type;
+
+        if (implDisp.params.size() != m_sym.formals_list.size()) {
+            SymbolTable.error(implDisp.context, implDisp.method.token,
+                    "Method " + implDisp.method.token.getText() + " of class " + self_type +
+                            " is applied to wrong number of arguments");
+            return null;
+        }
+
+        for (Expression p : implDisp.params) {
+            TypeSymbol p_type = p.accept(this);
+            ((DispSymbol) implDisp.symbol).param_types.add(p_type);
+        }
+
+        if (m_sym.type != null)
+            return (TypeSymbol) SymbolTable.globals.lookup(m_sym.type.getName(), "type");
+
+
         return null;
     }
 }

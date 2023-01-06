@@ -50,11 +50,12 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
         }
 
         currentScope = new DefaultScope(currentScope, c.name.getText());
-        c.scope = currentScope;
 
         for (Feature f : c.features) {
             f.accept(this);
         }
+        c.scope = currentScope;
+        ((TypeSymbol) c.symbol).scope = currentScope;
 
         currentScope = currentScope.getParent();
 
@@ -94,6 +95,7 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
     @Override
     public Void visit(Method method) {
         MethodSymbol sym = new MethodSymbol(method.name.getToken().getText());
+        sym.type = new TypeSymbol(method.type.getText());
         if (!currentScope.add(sym, "method")) {
             SymbolTable.error(method.context, method.name.token,
                     "Class " + ((DefaultScope) currentScope).name + " redefines method " +
@@ -167,6 +169,8 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
             currentScope = new DefaultScope(currentScope, "let");
             currentScope.add(v.symbol, "var");
         }
+
+        let.body.accept(this);
 
         var aux = currentScope;
         currentScope = let.scope;
@@ -379,13 +383,34 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
 
     @Override
     public Void visit(ExplicitDispatch explDisp) {
-        explDisp.symbol = new Symbol("explDisp");
+        explDisp.symbol = new DispSymbol("explDisp");
+        explDisp.scope = currentScope;
+
+        if (explDisp.atType != null && explDisp.atType.getText().equals("SELF_TYPE")) {
+            SymbolTable.error(explDisp.context, explDisp.atType,
+                    "Type of static dispatch cannot be SELF_TYPE");
+        }
+
+        explDisp.entity.accept(this);
+        explDisp.method.accept(this);
+
+        for (Expression e : explDisp.params) {
+            e.accept(this);
+        }
+
         return null;
     }
 
     @Override
     public Void visit(ImplicitDispatch implDisp) {
-        implDisp.symbol = new Symbol("implDisp");
+        implDisp.symbol = new DispSymbol("implDisp");
+        implDisp.scope = currentScope;
+
+        implDisp.method.accept(this);
+        for (Expression e : implDisp.params) {
+            e.accept(this);
+        }
+
         return null;
     }
 }
