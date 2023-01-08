@@ -75,9 +75,9 @@ public class DefaultScope implements Scope {
     
     @Override
     public String toString() {
-        LinkedList<Symbol> t = new LinkedList<>(types.values());
-        LinkedList<Symbol> m = new LinkedList<>(methods.values());
-        LinkedList<Symbol> v = new LinkedList<>(vars.values());
+        HashSet<Symbol> t = new HashSet<>(types.values());
+        HashSet<Symbol> m = new HashSet<>(methods.values());
+        HashSet<Symbol> v = new HashSet<>(vars.values());
 
         Scope crt = parent;
         while (crt != null) {
@@ -90,13 +90,22 @@ public class DefaultScope implements Scope {
         return "types:" + t +
                 "methods:" + m +
                 "var:" + v;
-        /*
-        return "types:" + types.values().toString() +
-                //"attr:" + attributes.values().toString() +
-                "methods:" + methods.values().toString() +
-                "var:" + vars.values().toString();
+    }
 
-         */
+    public void mergeScope(DefaultScope scope) {
+        DefaultScope crt = scope;
+        while (crt != null) {
+            for (String k : crt.types.keySet()) {
+                types.put(k, crt.types.get(k));
+            }
+            for (String k : crt.vars.keySet()) {
+                vars.put(k, crt.vars.get(k));
+            }
+            for (String k : crt.methods.keySet()) {
+                methods.put(k, crt.methods.get(k));
+            }
+            crt = (DefaultScope) crt.parent;
+        }
     }
 
 }

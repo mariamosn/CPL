@@ -16,12 +16,18 @@ public class SymbolTable {
         globals = new DefaultScope(null);
         semanticErrors = false;
         
-        // TODO Populate global scope.
+        // Populate global scope.
+        TypeSymbol.basicClassesSetup();
+        addBasicClasses();
+    }
+
+    private static void addBasicClasses() {
         globals.add(TypeSymbol.OBJECT, "type");
         globals.add(TypeSymbol.IO, "type");
         globals.add(TypeSymbol.INT, "type");
         globals.add(TypeSymbol.STRING, "type");
         globals.add(TypeSymbol.BOOL, "type");
+        globals.add(TypeSymbol.SELF_TYPE, "type");
     }
     
     /**

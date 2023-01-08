@@ -3,7 +3,7 @@ package cool.parser;
 import cool.structures.*;
 
 public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
-    TypeSymbol self_type = null;
+    TypeSymbol crtClass = null;
 
     @Override
     public TypeSymbol visit(Program program) {
@@ -15,10 +15,10 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
 
     @Override
     public TypeSymbol visit(Class c) {
-        TypeSymbol old_self_type = self_type;
+        TypeSymbol old_self_type = crtClass;
         if (c.scope == null || c.scope.lookup(c.name.getText(), "type") == null)
             return null;
-        self_type = (TypeSymbol) c.scope.lookup(c.name.getText(), "type");
+        crtClass = (TypeSymbol) c.scope.lookup(c.name.getText(), "type");
 
         if (c.parent != null && c.scope.lookup(c.parent.getText(), "type") == null) {
             SymbolTable.error(c.context, c.parent,
@@ -26,6 +26,7 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
             return null;
         } else if (c.parent != null) {
             ((TypeSymbol) c.symbol).parent = (TypeSymbol) c.scope.lookup(c.parent.getText(), "type");
+            ((DefaultScope) c.scope).mergeScope(((DefaultScope) ((TypeSymbol) c.symbol).parent.scope));
         }
         ((TypeSymbol) c.symbol).scope = c.scope;
 
@@ -35,7 +36,7 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
             f.accept(this);
         }
 
-        self_type = old_self_type;
+        crtClass = old_self_type;
 
         return null;
     }
@@ -60,7 +61,9 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
         TypeSymbol val_type;
         if (attribute.value != null) {
             val_type = attribute.value.accept(this);
-            if (!attr_type.isDesc(val_type)) {
+            if (!attr_type.isDesc(val_type) &&
+                    !(attr_type == TypeSymbol.SELF_TYPE && crtClass.isDesc(val_type)) &&
+                    !(val_type == TypeSymbol.SELF_TYPE && attr_type.isDesc(crtClass))) {
                 SymbolTable.error(attribute.context, attribute.value.token,
                         "Type " + val_type + " of initialization expression of attribute " +
                         attribute.name.token.getText() + " is incompatible with declared type " + attr_type);
@@ -76,7 +79,9 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
         if (method.symbol == null)
             return null;
         ret_type = (TypeSymbol) method.scope.lookup(method.type.getText(), "type");
+
         ((MethodSymbol) method.symbol).type = ret_type;
+        ((MethodSymbol) method.symbol).parent = crtClass;
         if (ret_type == null) {
             SymbolTable.error(method.context, method.token,
                     "Class " + ((DefaultScope) method.scope.getParent()).name + " has method " +
@@ -90,10 +95,16 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
         }
 
         TypeSymbol body_type = method.body.accept(this);
-        if (ret_type != null && !ret_type.isDesc(body_type)) {
+        if (ret_type != null && ret_type != body_type &&
+                ((!ret_type.isDesc(body_type) || ret_type == TypeSymbol.SELF_TYPE && !crtClass.isDesc(body_type))) &&
+                !(body_type == TypeSymbol.SELF_TYPE && ret_type.isDesc(crtClass))) {
             SymbolTable.error(method.context, method.body.token,
                     "Type " + body_type + " of the body of method " + method.name.token.getText() +
-                    " is incompatible with declared return type " + ret_type);
+                    " is incompatible with declared return type " + method.type.getText());
+        }
+
+        if (ret_type == TypeSymbol.SELF_TYPE) {
+            ret_type = crtClass;
         }
 
         return ret_type;
@@ -170,11 +181,13 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
     @Override
     public TypeSymbol visit(Var v) {
         TypeSymbol id_type = (TypeSymbol) v.scope.lookup(v.type.getText(), "type");
+
         if (id_type == null) {
             SymbolTable.error(v.context, v.type,
                     "Let variable " + v.name.token.getText() + " has undefined type " + v.type.getText());
         } else if (v.name.symbol != null) {
             ((IdSymbol) v.name.symbol).type = id_type;
+            ((IdSymbol) v.symbol).type = id_type;
         }
 
         TypeSymbol val_type = null;
@@ -182,7 +195,9 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
             val_type = v.value.accept(this);
         }
 
-        if (id_type != null && !id_type.isDesc(val_type)) {
+        if (id_type != null &&
+                !id_type.isDesc(val_type) &&
+                !(id_type == TypeSymbol.SELF_TYPE && crtClass.isDesc(val_type))) {
             SymbolTable.error(v.context, v.value.token,
                     "Type " + val_type + " of initialization expression of identifier " +
                     v.name.token.getText() + " is incompatible with declared type " + id_type);
@@ -195,8 +210,8 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
     public TypeSymbol visit(Id id) {
         if (id.token.getText().equals("self")) {
             id.symbol = new IdSymbol("self");
-            ((IdSymbol) id.symbol).type = self_type;
-            return self_type;
+            ((IdSymbol) id.symbol).type = TypeSymbol.SELF_TYPE;
+            return ((IdSymbol) id.symbol).type;
         }
         IdSymbol sym = null;
         if (!id.token.getText().equals("self") && id.scope != null &&
@@ -248,7 +263,9 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
         TypeSymbol id_type = assign.id.accept(this);
         TypeSymbol val_type = assign.expr.accept(this);
 
-        if (id_type != null && !id_type.isDesc(val_type)) {
+        if (id_type != null && !id_type.isDesc(val_type) &&
+                !(id_type == TypeSymbol.SELF_TYPE && crtClass.isDesc(val_type)) &&
+                !(val_type == TypeSymbol.SELF_TYPE && id_type.isDesc(crtClass))) {
             SymbolTable.error(assign.context, assign.expr.token,
                     "Type " + val_type + " of assigned expression is incompatible with declared type " +
                             id_type + " of identifier " + assign.id.token.getText());
@@ -409,6 +426,9 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
     @Override
     public TypeSymbol visit(ExplicitDispatch explDisp) {
         TypeSymbol entity_type = explDisp.entity.accept(this);
+        if (entity_type == TypeSymbol.SELF_TYPE) {
+            entity_type = crtClass;
+        }
         TypeSymbol at_type = null;
         TypeSymbol actual_type = entity_type;
         MethodSymbol m_sym = null;
@@ -443,7 +463,12 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
             }
             crt = crt.parent;
         }
+
         if (m_sym == null) {
+            TypeSymbol aux = actual_type;
+            while (aux != null) {
+                aux = aux.parent;
+            }
             SymbolTable.error(explDisp.context, explDisp.method.token,
                     "Undefined method " + explDisp.method.token.getText() + " in class " + actual_type);
             return null;
@@ -463,6 +488,9 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
             ((DispSymbol) explDisp.symbol).param_types.add(p_type);
         }
 
+        if (m_sym.type == TypeSymbol.SELF_TYPE && entity_type != crtClass)
+            return entity_type;
+
         if (m_sym.type != null)
             return (TypeSymbol) SymbolTable.globals.lookup(m_sym.type.getName(), "type");
         return null;
@@ -473,7 +501,7 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
 
         MethodSymbol m_sym = null;
 
-        TypeSymbol crt = self_type;
+        TypeSymbol crt = crtClass;
         while (crt != null) {
             if (crt.scope != null) {
                 m_sym = (MethodSymbol) crt.scope.lookup(implDisp.method.token.getText(), "method");
@@ -485,16 +513,16 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
         }
         if (m_sym == null) {
             SymbolTable.error(implDisp.context, implDisp.method.token,
-                    "Undefined method " + implDisp.method.token.getText() + " in class " + self_type);
+                    "Undefined method " + implDisp.method.token.getText() + " in class " + crtClass);
             return null;
         }
 
         ((DispSymbol) implDisp.symbol).method = m_sym;
-        ((DispSymbol) implDisp.symbol).type = self_type;
+        ((DispSymbol) implDisp.symbol).type = crtClass;
 
         if (implDisp.params.size() != m_sym.formals_list.size()) {
             SymbolTable.error(implDisp.context, implDisp.method.token,
-                    "Method " + implDisp.method.token.getText() + " of class " + self_type +
+                    "Method " + implDisp.method.token.getText() + " of class " + crtClass +
                             " is applied to wrong number of arguments");
             return null;
         }
