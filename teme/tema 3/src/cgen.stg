@@ -23,7 +23,16 @@ _bool_tag:
 
 <constStrs>
 <constInts>
-<constBools>
+bool_const0:
+    .word   4
+    .word   4
+    .word   Bool_dispTab
+    .word   0
+bool_const1:
+    .word   4
+    .word   4
+    .word   Bool_dispTab
+    .word   1
 
 class_nameTab:
     <classesConstStrNames>
@@ -46,6 +55,24 @@ heap_start:
 
 <initRoutines>
 <methods>
+>>
+
+constStr(orderNum, size, tag, int_len, str) ::= <<
+str_const<orderNum>:
+    .word   <tag>
+    .word   <size>
+    .word   String_dispTab
+    .word   <int_len>
+    .asciiz "<str>"
+    .align  2
+>>
+
+constInt(orderNum, tag, val) ::= <<
+int_const<orderNum>:
+    .word   <tag>
+    .word   4
+    .word   Int_dispTab
+    .word   <val>
 >>
 
 literal(value) ::= <<
