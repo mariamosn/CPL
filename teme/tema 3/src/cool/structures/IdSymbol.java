@@ -3,6 +3,7 @@ package cool.structures;
 public class IdSymbol extends Symbol {
     public TypeSymbol type;
     public Symbol parent;
+    public Integer offset;
 
     public IdSymbol(String name) {
         super(name);

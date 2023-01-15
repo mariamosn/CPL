@@ -34,7 +34,7 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 		}
 	}
 
-	void  addIntToConst(int n) {
+	void addIntToConst(int n) {
 		Integer number = n;
 		if (!intToIntConst.containsKey(number)){
 			StringBuilder str = new StringBuilder();
@@ -45,9 +45,10 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 		}
 	}
 
-	void addConstStr(String str_tmp) {
-		if (strToStrConst.containsKey(str_tmp))
-			return;
+	String addConstStr(String str_tmp) {
+		if (strToStrConst.containsKey(str_tmp)) {
+			return strToStrConst.get(str_tmp);
+		}
 		ST tmp;
 		tmp = templates.getInstanceOf("constStr");
 		tmp.add("orderNum", str_const_cnt);
@@ -62,6 +63,7 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 		// adauga in map string-ul
 		addStringToConst(str_tmp);
 		str_const_cnt++;
+		return strToStrConst.get(str_tmp);
 	}
 
 	String addConstInt(Integer n) {
@@ -99,12 +101,22 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 
 	@Override
 	public ST visit(Str str) {
-		return null;
+		ST strST = templates.getInstanceOf("literal");
+		strST.add("value", addConstStr(str.token.getText()));
+		return strST;
 	}
 
 	@Override
 	public ST visit(Bool bool) {
-		return null;
+		ST boolST = templates.getInstanceOf("literal");
+		int val;
+		if (bool.token.getText().equals("true")) {
+			val = 1;
+		} else {
+			val = 0;
+		}
+		boolST.add("value", "bool_const" + val);
+		return boolST;
 	}
 
 	@Override
@@ -169,7 +181,7 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 
 
 
-	void addClassBasicInfo(TypeSymbol cls){
+	void addClassBasicInfo(TypeSymbol cls, ST attrs){
 		// adauga numele clasei in constStrs
 		//  si in classesConstStrNames
 		//  si in prototypesNames (sub forma <clasa>_protObj, <clasa>_init)
@@ -184,7 +196,10 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 		addProtoType(cls);
 		addDispTable(cls);
 		// scrie rutina de init si adaug-o in initRoutines
-		addInitClass(cls);
+		if (attrs != null)
+			addInitClass(cls, attrs);
+		else
+			addInitClass(cls);
 	}
 
 	void findAttributes(List<IdSymbol> attrs, TypeSymbol typeClass){
@@ -252,7 +267,7 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 
 	}
 
-	void addInitClass(TypeSymbol typeClass){
+	void addInitClass(TypeSymbol typeClass) {
 		ST tmp;
 		tmp = templates.getInstanceOf("initClass");
 		tmp.add("className", typeClass.getName());
@@ -261,6 +276,19 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 		} else {
 			tmp.add("parentName", null);
 		}
+		initRoutines.add("e", tmp);
+	}
+
+	void addInitClass(TypeSymbol typeClass, ST attrs) {
+		ST tmp;
+		tmp = templates.getInstanceOf("initClass");
+		tmp.add("className", typeClass.getName());
+		if (typeClass.parent != null) {
+			tmp.add("parentName", typeClass.parent.getName());
+		} else {
+			tmp.add("parentName", null);
+		}
+		tmp.add("attrs", attrs);
 		initRoutines.add("e", tmp);
 	}
 	@Override
@@ -277,11 +305,11 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 		addConstStr("");
 
 		// adauga informatie legata de clasele default (Object, IO, Int, String, Bool)
-		addClassBasicInfo(TypeSymbol.OBJECT);
-		addClassBasicInfo(TypeSymbol.IO);
-		addClassBasicInfo(TypeSymbol.INT);
-		addClassBasicInfo(TypeSymbol.STRING);
-		addClassBasicInfo(TypeSymbol.BOOL);
+		addClassBasicInfo(TypeSymbol.OBJECT, null);
+		addClassBasicInfo(TypeSymbol.IO, null);
+		addClassBasicInfo(TypeSymbol.INT, null);
+		addClassBasicInfo(TypeSymbol.STRING, null);
+		addClassBasicInfo(TypeSymbol.BOOL, null);
 
 		// TODO: implemntare pentru metodele din clasele default
 
@@ -347,7 +375,8 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 
 	@Override
 	public ST visit(Class c) {
-		addClassBasicInfo((TypeSymbol) c.symbol);
+		ST attrs = templates.getInstanceOf("sequence");
+		int cnt = 0;
 
 		// viziteaza feature-urile
 		for (Feature f : c.features) {
@@ -355,7 +384,19 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 			if (f instanceof Method) {
 				// adauga ce intoarece metoda.accept(this) in methods
 				methods.add("e", res);
+			} else if (f instanceof Attribute && res != null) {
+				attrs.add("e", res);
+				ST auxLine = templates.getInstanceOf("swLine");
+				auxLine.add("offset", ((IdSymbol)f.symbol).offset);
+				attrs.add("e", auxLine);
+				cnt++;
 			}
+		}
+
+		if (cnt == 0) {
+			addClassBasicInfo((TypeSymbol) c.symbol, null);
+		} else {
+			addClassBasicInfo((TypeSymbol) c.symbol, attrs);
 		}
 
 		return null;
@@ -372,7 +413,12 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 
 	@Override
 	public ST visit(Attribute attribute) {
-		return null;
+		ST res = null;
+		if (attribute.value != null) {
+			res = attribute.value.accept(this);
+		}
+		// TODO: aici trebuie adaugat cumva si offset-ul ala [ex. sw      $a0 16($s0)]
+		return res;
 	}
 
 	@Override

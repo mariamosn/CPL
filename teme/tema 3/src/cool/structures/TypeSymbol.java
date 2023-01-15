@@ -198,4 +198,14 @@ public class TypeSymbol extends Symbol {
         substrSym.formals.put("l", formal3);
         STRING.scope.add(substrSym, "method");
     }
+
+    public Integer countAttrs() {
+        Integer cnt = 0;
+        TypeSymbol crt = this;
+        while (crt != null) {
+            cnt += crt.attrs.size();
+            crt = crt.parent;
+        }
+        return cnt;
+    }
 }

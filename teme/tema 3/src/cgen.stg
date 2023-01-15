@@ -76,7 +76,7 @@ int_const<orderNum>:
     .word   <val>
 >>
 
-initClass(className, parentName) ::= <<
+initClass(className, parentName, attrs) ::= <<
 <className>_init:
     addiu   $sp $sp -12
     sw      $fp 12($sp)
@@ -85,6 +85,8 @@ initClass(className, parentName) ::= <<
     addiu   $fp $sp 4
     move    $s0 $a0
 <if(parentName)>    jal     <parentName>_init
+<endif>
+<if(attrs)><attrs>
 <endif>
     move    $a0 $s0
     lw      $fp 12($sp)
@@ -108,6 +110,18 @@ methodImpl(className, methodName, body) ::= <<
     lw      $ra 4($sp)
     addiu   $sp $sp 12
     jr      $ra
+>>
+
+dispatchImpl(crt) ::= <<
+todo
+>>
+
+dispatch(crt) ::= <<
+todo
+>>
+
+swLine(offset) ::= <<
+    sw      $a0 <offset>($s0)
 >>
 
 wordLine(name) ::= <<
