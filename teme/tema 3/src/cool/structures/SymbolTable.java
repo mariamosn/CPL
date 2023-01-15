@@ -111,7 +111,7 @@ public class SymbolTable {
      * @param str The error message.
      */
     public static void error(ParserRuleContext ctx, Token info, String str) {
-        while (! (ctx.getParent() instanceof CoolParser.ProgramContext))
+        while (!(ctx.getParent() instanceof CoolParser.ProgramContext))
             ctx = ctx.getParent();
         
         String message = "\"" + new File(Compiler.fileNames.get(ctx)).getName()

@@ -1,16 +1,22 @@
 package cool.parser;
 
+import cool.compiler.Compiler;
 import cool.structures.*;
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.stringtemplate.v4.ST;
 import org.stringtemplate.v4.STGroupFile;
 
+import java.io.File;
 import java.util.*;
 import java.lang.Math;
 
-public class CodeGenVisitor implements ASTVisitor<ST>{
+public class CodeGenVisitor implements ASTVisitor<ST> {
+	TypeSymbol crtClass = null;
 	int str_const_cnt = 0;
 	int int_const_cnt = 0;
 	int cnt = 0;
+	int tagCnt = 0;
+	String filename = "";
 	static STGroupFile templates = new STGroupFile("cgen.stg");
 	public Map<String, String> strToStrConst = new LinkedHashMap<>();
 	public Map<Integer, String> intToIntConst = new LinkedHashMap<>();
@@ -84,7 +90,13 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 
 	@Override
 	public ST visit(Id id) {
-		return null;
+		ST tmp = templates.getInstanceOf("tabLine");
+		if (id.symbol.getName().equals("self")) {
+			tmp.add("content", "move    $a0 $s0");
+		} else {
+			tmp.add("content", "lw      $a0 " + ((IdSymbol)id.symbol).offset + "($s0)");
+		}
+		return tmp;
 	}
 
 	@Override
@@ -211,7 +223,7 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 		}
 	}
 
-	void addProtoType(TypeSymbol typeClass){
+	void addProtoType(TypeSymbol typeClass) {
 		ST tmp;
 		String attributesString;
 
@@ -332,7 +344,14 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 
 	@Override
 	public ST visit(Block block) {
-		return null;
+		// creez o noua secventa
+		ST blockST = templates.getInstanceOf("sequence");
+		ST sym = null;
+		for (Expression e : block.body) {
+			sym = e.accept(this);
+			blockST.add("e", sym);
+		}
+		return blockST;
 	}
 
 	@Override
@@ -363,10 +382,13 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 				}
 			}
 		}
+		int offset = 0;
 		for (String meth : methodNames) {
 			String clsName = methodToClass.get(meth);
 			String entry = clsName + "." + meth;
 			dispTable.add("e", templates.getInstanceOf("wordLine").add("name", entry));
+			cls.methodOffset.put(meth, offset);
+			offset += 4;
 		}
 
 		// adauga dispatchTable-ul la dispatchTables
@@ -375,21 +397,25 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 
 	@Override
 	public ST visit(Class c) {
+		TypeSymbol old_self_type = crtClass;
+		if (c.scope == null || c.scope.lookup(c.name.getText(), "type") == null)
+			return null;
+		crtClass = (TypeSymbol) c.scope.lookup(c.name.getText(), "type");
+
 		ST attrs = templates.getInstanceOf("sequence");
 		int cnt = 0;
 
-		// viziteaza feature-urile
+		// viziteaza atributele
 		for (Feature f : c.features) {
-			ST res = f.accept(this);
-			if (f instanceof Method) {
-				// adauga ce intoarece metoda.accept(this) in methods
-				methods.add("e", res);
-			} else if (f instanceof Attribute && res != null) {
-				attrs.add("e", res);
-				ST auxLine = templates.getInstanceOf("swLine");
-				auxLine.add("offset", ((IdSymbol)f.symbol).offset);
-				attrs.add("e", auxLine);
-				cnt++;
+			if (f instanceof Attribute) {
+				ST res = f.accept(this);
+				if (res != null) {
+					attrs.add("e", res);
+					ST auxLine = templates.getInstanceOf("swLine");
+					auxLine.add("offset", ((IdSymbol) f.symbol).offset);
+					attrs.add("e", auxLine);
+					cnt++;
+				}
 			}
 		}
 
@@ -398,6 +424,17 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 		} else {
 			addClassBasicInfo((TypeSymbol) c.symbol, attrs);
 		}
+
+		// viziteaza metodele
+		for (Feature m : c.features) {
+			if (m instanceof Method) {
+				ST res = m.accept(this);
+				// adauga ce intoarece metoda.accept(this) in methods
+				methods.add("e", res);
+			}
+		}
+
+		crtClass = old_self_type;
 
 		return null;
 	}
@@ -428,12 +465,59 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 
 	@Override
 	public ST visit(ExplicitDispatch explDisp) {
-		return null;
+		LinkedList<ST> params_list = new LinkedList<>();
+		for (Expression p : explDisp.params) {
+			ST tmp = templates.getInstanceOf("paramOnStack");
+			tmp.add("parameter", p.accept(this));
+			params_list.add(tmp);
+		}
+		Collections.reverse(params_list);
+		ST params = templates.getInstanceOf("sequence");
+		for (ST p_ST : params_list) {
+			params.add("e", p_ST);
+		}
+
+		ST tmp;
+		tmp = templates.getInstanceOf("dispatchExplicit");
+		tmp.add("params", params);
+		tmp.add("dispEntity", explDisp.entity.accept(this));
+		tmp.add("crt", tagCnt);
+		tagCnt++;
+		getFilename(explDisp.context);
+		tmp.add("fileName", strToStrConst.get(filename));
+		tmp.add("crtLine", explDisp.token.getLine());
+		if (explDisp.atType != null)
+			tmp.add("atType", explDisp.atType.getText());
+		tmp.add("offsetInDispTable",
+				((DispSymbol)explDisp.symbol).type.methodOffset.get(explDisp.method.token.getText()));
+		return tmp;
 	}
 
 	@Override
 	public ST visit(ImplicitDispatch implDisp) {
-		return null;
+		LinkedList<ST> params_list = new LinkedList<>();
+		for (Expression p : implDisp.params) {
+			ST tmp = templates.getInstanceOf("paramOnStack");
+			tmp.add("parameter", p.accept(this));
+			params_list.add(tmp);
+		}
+		Collections.reverse(params_list);
+		ST params = templates.getInstanceOf("sequence");
+		for (ST p_ST : params_list) {
+			params.add("e", p_ST);
+		}
+
+		ST tmp;
+		tmp = templates.getInstanceOf("dispatchImplicit");
+		tmp.add("params", params);
+		tmp.add("crt", tagCnt);
+		tagCnt++;
+		getFilename(implDisp.context);
+		tmp.add("fileName", strToStrConst.get(filename));
+		tmp.add("crtLine", implDisp.token.getLine());
+		tmp.add("offsetInDispTable", crtClass.methodOffset.get(implDisp.method.token.getText()));
+
+		return tmp;
 	}
 
 	@Override
@@ -444,5 +528,15 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 	@Override
 	public ST visit(Case c) {
 		return null;
+	}
+
+	private void getFilename(ParserRuleContext context) {
+		if (!filename.equals(""))
+			return;
+		ParserRuleContext ctx = context;
+		while (! (ctx.getParent() instanceof CoolParser.ProgramContext))
+			ctx = ctx.getParent();
+		filename = new File(Compiler.fileNames.get(ctx)).getName();
+		addConstStr(filename);
 	}
 }

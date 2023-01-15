@@ -12,6 +12,7 @@ public class TypeSymbol extends Symbol {
     public Scope scope = null;
     public Map<String, IdSymbol> attrs = new LinkedHashMap<>();
     public Map<String, MethodSymbol> meths = new LinkedHashMap<>();
+    public Map<String, Integer> methodOffset = new LinkedHashMap<>();
     public Integer tag;
     public static Integer nextTag = 5;
     public TypeSymbol(String name) {

@@ -112,16 +112,48 @@ methodImpl(className, methodName, body) ::= <<
     jr      $ra
 >>
 
-dispatchImpl(crt) ::= <<
-todo
+dispatchImplicit(params, crt, fileName, crtLine, offsetInDispTable) ::= <<
+<params>
+    move    $a0 $s0
+    bnez    $a0 dispatch<crt>
+    la      $a0 <fileName>
+    li      $t1 <crtLine>
+    jal     _dispatch_abort
+dispatch<crt>:
+    lw      $t1 8($a0)      # dispatch table
+    lw      $t1 <offsetInDispTable>($t1)    # method offset
+    jalr    $t1
 >>
 
-dispatch(crt) ::= <<
-todo
+dispatchExplicit(params, dispEntity, crt, fileName, crtLine, atType, offsetInDispTable) ::= <<
+<params>
+<dispEntity>
+    bnez    $a0 dispatch<crt>
+    la      $a0 <fileName>
+    li      $t1 <crtLine>
+    jal     _dispatch_abort
+dispatch<crt>:
+<if(atType)>
+    la      $t1 <atType>_dispTab    # dispatch table
+<else>
+    lw      $t1 8($a0)  # dispatch table
+<endif>
+    lw      $t1 <offsetInDispTable>($t1)    # method offset
+    jalr    $t1
+>>
+
+paramOnStack(parameter) ::= <<
+<parameter>
+    sw      $a0 0($sp)
+    addiu   $sp $sp -4
 >>
 
 swLine(offset) ::= <<
     sw      $a0 <offset>($s0)
+>>
+
+tabLine(content) ::= <<
+    <content>
 >>
 
 wordLine(name) ::= <<
