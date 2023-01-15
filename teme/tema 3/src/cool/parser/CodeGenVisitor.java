@@ -64,9 +64,9 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 		str_const_cnt++;
 	}
 
-	void addConstInt(Integer n) {
+	String addConstInt(Integer n) {
 		if (intToIntConst.containsKey(n))
-			return;
+			return intToIntConst.get(n);
 		ST tmp;
 		tmp = templates.getInstanceOf("constInt");
 		tmp.add("orderNum", int_const_cnt);
@@ -75,6 +75,7 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 		constInts.add("e", tmp);
 		addIntToConst(n);
 		int_const_cnt++;
+		return intToIntConst.get(n);
 	}
 
 
@@ -86,7 +87,9 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 
 	@Override
 	public ST visit(Int intt) {
-		return null;
+		ST intST = templates.getInstanceOf("literal");
+		intST.add("value", addConstInt(Integer.parseInt(intt.token.getText())));
+		return intST;
 	}
 
 	@Override
@@ -167,6 +170,9 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 
 
 	void addClassBasicInfo(TypeSymbol cls){
+		// adauga numele clasei in constStrs
+		//  si in classesConstStrNames
+		//  si in prototypesNames (sub forma <clasa>_protObj, <clasa>_init)
 		addConstStr(cls.getName());
 		classesConstStrNames.add("e",
 				templates.getInstanceOf("wordLine").add("name", strToStrConst.get(cls.getName())));
@@ -174,8 +180,10 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 				templates.getInstanceOf("wordLine").add("name", cls.getName() + "_protObj"));
 		prototypesNames.add("e",
 				templates.getInstanceOf("wordLine").add("name", cls.getName()+ "_init"));
+		// construieste protoObj si adauga-l in prototypes
 		addProtoType(cls);
 		addDispTable(cls);
+		// scrie rutina de init si adaug-o in initRoutines
 		addInitClass(cls);
 	}
 
@@ -200,9 +208,9 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 			attributes.add("e", templates.getInstanceOf("wordLine").add("name", 0));
 		} else if (typeClass == TypeSymbol.STRING) {
 			attributes.add("e",
-					templates.getInstanceOf("wordLine").add("name", "string_const0"));
+					templates.getInstanceOf("wordLine").add("name", "int_const0"));
 			attributes.add("e", templates.getInstanceOf("asciiLine").add("name", "\"\""));
-			attributes.add("e", templates.getInstanceOf("allignLine").add("name", 2));
+			attributes.add("e", templates.getInstanceOf("alignLine").add("name", 2));
 		} else {
 			for (int i = 0; i < attrs.size(); i++) {
 				// pt fiecare atribut iau type si adaug in seq
@@ -234,7 +242,8 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 			nrWords += 2;
 		}
 		tmp.add("size", nrWords);
-		if (attrs.size() != 0) {
+		if (attrs.size() != 0 || typeClass == TypeSymbol.INT ||
+				typeClass == TypeSymbol.STRING || typeClass == TypeSymbol.BOOL) {
 			tmp.add("attrs", attributes);
 		} else {
 			tmp.add("attrs", null);
@@ -268,17 +277,13 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 		addConstStr("");
 
 		// adauga informatie legata de clasele default (Object, IO, Int, String, Bool)
-		// TODO: de adaugat valoare default in protObj Int, String, Bool
 		addClassBasicInfo(TypeSymbol.OBJECT);
 		addClassBasicInfo(TypeSymbol.IO);
 		addClassBasicInfo(TypeSymbol.INT);
 		addClassBasicInfo(TypeSymbol.STRING);
 		addClassBasicInfo(TypeSymbol.BOOL);
 
-
 		// TODO: implemntare pentru metodele din clasele default
-		// TODO: rutinele de initializare ale claselor
-
 
 		// viziteaza clasele
 		for (var c : program.stmts) {
@@ -342,12 +347,7 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 
 	@Override
 	public ST visit(Class c) {
-		// adauga numele clasei in constStrs
-		//  si in classesConstStrNames
-		//  si in prototypesNames (sub forma <clasa>_protObj, <clasa>_init)
 		addClassBasicInfo((TypeSymbol) c.symbol);
-
-		// addDispTable((TypeSymbol) c.symbol);
 
 		// viziteaza feature-urile
 		for (Feature f : c.features) {
@@ -358,17 +358,16 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 			}
 		}
 
-		// construieste protoObj si adauga-l in prototypes
-		// addProtoType((TypeSymbol) c.symbol);
-
-		// TODO: scrie rutina de init si adaug-o in initRoutines
-		// addInitClass((TypeSymbol) c.symbol);
 		return null;
 	}
 
 	@Override
 	public ST visit(Method method) {
-		return null;
+		ST meth = templates.getInstanceOf("methodImpl");
+		meth.add("className", ((TypeSymbol)((MethodSymbol)method.symbol).parent).getName());
+		meth.add("methodName", ((MethodSymbol)method.symbol).getName());
+		meth.add("body", method.body.accept(this));
+		return meth;
 	}
 
 	@Override

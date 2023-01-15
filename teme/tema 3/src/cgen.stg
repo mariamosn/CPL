@@ -76,22 +76,38 @@ int_const<orderNum>:
     .word   <val>
 >>
 
-initClass(className, parentName) ::=<<
+initClass(className, parentName) ::= <<
 <className>_init:
-   addiu   $sp $sp -12
-   sw      $fp 12($sp)
-   sw      $s0 8($sp)
-   sw      $ra 4($sp)
-   addiu   $fp $sp 4
-   move    $s0 $a0
-<if(parentName)>   jal     <parentName>_init
+    addiu   $sp $sp -12
+    sw      $fp 12($sp)
+    sw      $s0 8($sp)
+    sw      $ra 4($sp)
+    addiu   $fp $sp 4
+    move    $s0 $a0
+<if(parentName)>    jal     <parentName>_init
 <endif>
-   move    $a0 $s0
-   lw      $fp 12($sp)
-   lw      $s0 8($sp)
-   lw      $ra 4($sp)
-   addiu   $sp $sp 12
-   jr      $ra
+    move    $a0 $s0
+    lw      $fp 12($sp)
+    lw      $s0 8($sp)
+    lw      $ra 4($sp)
+    addiu   $sp $sp 12
+    jr      $ra
+>>
+
+methodImpl(className, methodName, body) ::= <<
+<className>.<methodName>:
+    addiu   $sp $sp -12
+    sw      $fp 12($sp)
+    sw      $s0 8($sp)
+    sw      $ra 4($sp)
+    addiu   $fp $sp 4
+    move    $s0 $a0
+<body>
+    lw      $fp 12($sp)
+    lw      $s0 8($sp)
+    lw      $ra 4($sp)
+    addiu   $sp $sp 12
+    jr      $ra
 >>
 
 wordLine(name) ::= <<
@@ -102,8 +118,8 @@ asciiLine(name) ::= <<
     .asciiz <name>
 >>
 
-allignLine(name) ::= <<
-    .allign <name>
+alignLine(name) ::= <<
+    .align  <name>
 >>
 
 defaultInt() ::= <<
@@ -124,7 +140,7 @@ prototype(className, tag, size, attrs) ::= <<
 
 
 literal(value) ::= <<
-	li $a0 <value>
+    la      $a0 <value>
 >>
 
 plus(e1, e2, dStr) ::= <<
