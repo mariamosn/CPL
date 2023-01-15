@@ -166,6 +166,12 @@ assign(var, expr) ::= <<
     sw      $a0 <var>
 >>
 
+new(name) ::= <<
+    la      $a0 <name>_protObj
+    jal     Object.copy
+    jal     <name>_init
+>>
+
 swLine(offset) ::= <<
     sw      $a0 <offset>($s0)
 >>

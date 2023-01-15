@@ -396,7 +396,8 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 
 	@Override
 	public ST visit(New n) {
-		ST tmp = null;
+		ST tmp = templates.getInstanceOf("new");
+		tmp.add("name", n.type.getText());
 		return tmp;
 	}
 
