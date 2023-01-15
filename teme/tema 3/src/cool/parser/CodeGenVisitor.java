@@ -233,6 +233,8 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 		tmp.add("size", nrWords);
 		if (attrs.size() != 0) {
 			tmp.add("attrs", attributes);
+		} else {
+			tmp.add("attrs", null);
 		}
 		prototypes.add("e", tmp);
 
@@ -242,10 +244,10 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 		ST tmp;
 		tmp = templates.getInstanceOf("initClass");
 		tmp.add("className", typeClass.getName());
-		if(typeClass.parent!=null) {
+		if (typeClass.parent != null) {
 			tmp.add("parentName", typeClass.parent.getName());
-		}else{
-			tmp.add("parentName", TypeSymbol.OBJECT.getName());
+		} else {
+			tmp.add("parentName", null);
 		}
 		initRoutines.add("e", tmp);
 	}
@@ -263,22 +265,27 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 		addConstStr("");
 
 		// adauga informatie legata de clasele default (Object, IO, Int, String, Bool)
+		// TODO: de adaugat valoare default in protObj Int, String, Bool
 		addClassBasicInfo("Object");
 		addProtoType(TypeSymbol.OBJECT);
 		addDispTable(TypeSymbol.OBJECT);
 		addInitClass(TypeSymbol.OBJECT);
+
 		addClassBasicInfo("IO");
 		addProtoType(TypeSymbol.IO);
 		addDispTable(TypeSymbol.IO);
 		addInitClass(TypeSymbol.IO);
+
 		addClassBasicInfo("Int");
 		addProtoType(TypeSymbol.INT);
 		addDispTable(TypeSymbol.INT);
 		addInitClass(TypeSymbol.INT);
+
 		addClassBasicInfo("String");
 		addProtoType(TypeSymbol.STRING);
 		addDispTable(TypeSymbol.STRING);
 		addInitClass(TypeSymbol.STRING);
+
 		addClassBasicInfo("Bool");
 		addProtoType(TypeSymbol.BOOL);
 		addDispTable(TypeSymbol.BOOL);
