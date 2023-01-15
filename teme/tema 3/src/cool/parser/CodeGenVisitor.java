@@ -166,14 +166,17 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 
 
 
-	void addClassBasicInfo(String nameClass){
-		addConstStr(nameClass);
+	void addClassBasicInfo(TypeSymbol cls){
+		addConstStr(cls.getName());
 		classesConstStrNames.add("e",
-				templates.getInstanceOf("wordLine").add("name", strToStrConst.get(nameClass)));
+				templates.getInstanceOf("wordLine").add("name", strToStrConst.get(cls.getName())));
 		prototypesNames.add("e",
-				templates.getInstanceOf("wordLine").add("name", nameClass + "_protObj"));
+				templates.getInstanceOf("wordLine").add("name", cls.getName() + "_protObj"));
 		prototypesNames.add("e",
-				templates.getInstanceOf("wordLine").add("name", nameClass+ "_init"));
+				templates.getInstanceOf("wordLine").add("name", cls.getName()+ "_init"));
+		addProtoType(cls);
+		addDispTable(cls);
+		addInitClass(cls);
 	}
 
 	void findAttributes(List<IdSymbol> attrs, TypeSymbol typeClass){
@@ -266,30 +269,11 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 
 		// adauga informatie legata de clasele default (Object, IO, Int, String, Bool)
 		// TODO: de adaugat valoare default in protObj Int, String, Bool
-		addClassBasicInfo("Object");
-		addProtoType(TypeSymbol.OBJECT);
-		addDispTable(TypeSymbol.OBJECT);
-		addInitClass(TypeSymbol.OBJECT);
-
-		addClassBasicInfo("IO");
-		addProtoType(TypeSymbol.IO);
-		addDispTable(TypeSymbol.IO);
-		addInitClass(TypeSymbol.IO);
-
-		addClassBasicInfo("Int");
-		addProtoType(TypeSymbol.INT);
-		addDispTable(TypeSymbol.INT);
-		addInitClass(TypeSymbol.INT);
-
-		addClassBasicInfo("String");
-		addProtoType(TypeSymbol.STRING);
-		addDispTable(TypeSymbol.STRING);
-		addInitClass(TypeSymbol.STRING);
-
-		addClassBasicInfo("Bool");
-		addProtoType(TypeSymbol.BOOL);
-		addDispTable(TypeSymbol.BOOL);
-		addInitClass(TypeSymbol.BOOL);
+		addClassBasicInfo(TypeSymbol.OBJECT);
+		addClassBasicInfo(TypeSymbol.IO);
+		addClassBasicInfo(TypeSymbol.INT);
+		addClassBasicInfo(TypeSymbol.STRING);
+		addClassBasicInfo(TypeSymbol.BOOL);
 
 
 		// TODO: implemntare pentru metodele din clasele default
@@ -361,9 +345,9 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 		// adauga numele clasei in constStrs
 		//  si in classesConstStrNames
 		//  si in prototypesNames (sub forma <clasa>_protObj, <clasa>_init)
-		addClassBasicInfo(c.name.getText());
+		addClassBasicInfo((TypeSymbol) c.symbol);
 
-		addDispTable((TypeSymbol) c.symbol);
+		// addDispTable((TypeSymbol) c.symbol);
 
 		// viziteaza feature-urile
 		for (Feature f : c.features) {
@@ -375,10 +359,10 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 		}
 
 		// construieste protoObj si adauga-l in prototypes
-		addProtoType((TypeSymbol) c.symbol);
+		// addProtoType((TypeSymbol) c.symbol);
 
 		// TODO: scrie rutina de init si adaug-o in initRoutines
-		addInitClass((TypeSymbol) c.symbol);
+		// addInitClass((TypeSymbol) c.symbol);
 		return null;
 	}
 
