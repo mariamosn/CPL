@@ -32,7 +32,7 @@ public class Compiler {
         // Parse each input file and build one big parse tree out of
         // individual parse trees.
         for (var fileName : args) {
-            // System.out.println(fileName);
+             System.out.println("hei"+ fileName);
             var input = CharStreams.fromFileName(fileName);
             
             // Lexer

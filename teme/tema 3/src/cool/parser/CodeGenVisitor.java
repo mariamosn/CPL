@@ -164,6 +164,8 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 		return null;
 	}
 
+
+
 	void addClassBasicInfo(String nameClass){
 		addConstStr(nameClass);
 		classesConstStrNames.add("e",
@@ -235,6 +237,18 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 		prototypes.add("e", tmp);
 
 	}
+
+	void addInitClass(TypeSymbol typeClass){
+		ST tmp;
+		tmp = templates.getInstanceOf("initClass");
+		tmp.add("className", typeClass.getName());
+		if(typeClass.parent!=null) {
+			tmp.add("parentName", typeClass.parent.getName());
+		}else{
+			tmp.add("parentName", TypeSymbol.OBJECT.getName());
+		}
+		initRoutines.add("e", tmp);
+	}
 	@Override
 	public ST visit(Program program) {
 		constStrs = templates.getInstanceOf("sequence");
@@ -252,18 +266,23 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 		addClassBasicInfo("Object");
 		addProtoType(TypeSymbol.OBJECT);
 		addDispTable(TypeSymbol.OBJECT);
+		addInitClass(TypeSymbol.OBJECT);
 		addClassBasicInfo("IO");
 		addProtoType(TypeSymbol.IO);
 		addDispTable(TypeSymbol.IO);
+		addInitClass(TypeSymbol.IO);
 		addClassBasicInfo("Int");
 		addProtoType(TypeSymbol.INT);
 		addDispTable(TypeSymbol.INT);
+		addInitClass(TypeSymbol.INT);
 		addClassBasicInfo("String");
 		addProtoType(TypeSymbol.STRING);
 		addDispTable(TypeSymbol.STRING);
+		addInitClass(TypeSymbol.STRING);
 		addClassBasicInfo("Bool");
 		addProtoType(TypeSymbol.BOOL);
 		addDispTable(TypeSymbol.BOOL);
+		addInitClass(TypeSymbol.BOOL);
 
 
 		// TODO: implemntare pentru metodele din clasele default
@@ -352,6 +371,7 @@ public class CodeGenVisitor implements ASTVisitor<ST>{
 		addProtoType((TypeSymbol) c.symbol);
 
 		// TODO: scrie rutina de init si adaug-o in initRoutines
+		addInitClass((TypeSymbol) c.symbol);
 		return null;
 	}
 
