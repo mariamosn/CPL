@@ -133,7 +133,16 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 
 	@Override
 	public ST visit(Assign assign) {
-		return null;
+		ST expr =  assign.expr.accept(this);
+		ST assignST = templates.getInstanceOf("assign");
+		assignST.add("expr", expr);
+		if (((IdSymbol) assign.id.symbol).isAttr) {
+			assignST.add("var", ((IdSymbol) assign.id.symbol).offset + "($s0)");
+		} else {
+			assignST.add("var", ((IdSymbol) assign.id.symbol).offset + "($fp)");
+		}
+		//assignST.add("content", "lw      $a0 " + ((IdSymbol)assign.id.symbol).offset + "($s0)");
+		return assignST;
 	}
 
 	@Override
@@ -178,7 +187,18 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 
 	@Override
 	public ST visit(Let let) {
-		return null;
+		ST tmp = templates.getInstanceOf("let");
+		tmp.add("localsSize", 4 * let.vars.size());
+		int offset = 1;
+		for (Var v : let.vars) {
+			ST crtVar = templates.getInstanceOf("localVar");
+			crtVar.add("var", v.accept(this));
+			crtVar.add("offset", offset * 4);
+			offset++;
+			tmp.add("vars", crtVar);
+		}
+		tmp.add("body", let.body.accept(this));
+		return tmp;
 	}
 
 	@Override

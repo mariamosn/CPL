@@ -59,9 +59,11 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
 
         if (attribute.symbol != null) {
             ((IdSymbol) attribute.symbol).type = attr_type;
+            ((IdSymbol) attribute.symbol).isAttr = true;
         }
         if (attribute.name.symbol != null) {
             ((IdSymbol) attribute.name.symbol).type = attr_type;
+            ((IdSymbol) attribute.name.symbol).isAttr = true;
         }
 
         TypeSymbol val_type;
@@ -96,8 +98,11 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
             return null;
         }
 
+        int offset = 0;
         for (Formal f : method.formals) {
             f.accept(this);
+            ((IdSymbol) f.symbol).offset = 12 + offset * 4;
+            offset++;
         }
 
         TypeSymbol body_type = method.body.accept(this);

@@ -4,6 +4,7 @@ public class IdSymbol extends Symbol {
     public TypeSymbol type;
     public Symbol parent;
     public Integer offset;
+    public Boolean isAttr = false;
 
     public IdSymbol(String name) {
         super(name);

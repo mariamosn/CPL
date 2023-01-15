@@ -148,6 +148,23 @@ paramOnStack(parameter) ::= <<
     addiu   $sp $sp -4
 >>
 
+let(localsSize, vars, body) ::= <<
+    addiu   $sp $sp -<localsSize>     # locals alloc
+<vars>
+<body>
+    addiu   $sp $sp <localsSize>    # locals free
+>>
+
+localVar(var, offset) ::= <<
+<var>
+    sw      $a0 -offset($fp)
+>>
+
+assign(var, expr) ::= <<
+<expr>
+    sw      $a0 <var>
+>>
+
 swLine(offset) ::= <<
     sw      $a0 <offset>($s0)
 >>
@@ -298,11 +315,6 @@ call(params, f, dStr) ::= <<
     addiu $sp $sp -4
     <sequence(params:param())>
     jal f		<if(dStr)># <dStr><else><endif>
->>
-
-assign(name, value, dStr) ::= <<
-<value>
-    sw $a0 <name>		<if(dStr)># <dStr><else><endif>
 >>
 
 vardef(name, value, dStr) ::= <<
