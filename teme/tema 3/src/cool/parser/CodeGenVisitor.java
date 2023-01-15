@@ -93,8 +93,10 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 		ST tmp = templates.getInstanceOf("tabLine");
 		if (id.symbol.getName().equals("self")) {
 			tmp.add("content", "move    $a0 $s0");
-		} else {
+		} else if (((IdSymbol) id.symbol).isAttr) {
 			tmp.add("content", "lw      $a0 " + ((IdSymbol)id.symbol).offset + "($s0)");
+		} else {
+			tmp.add("content", "lw      $a0 " + ((IdSymbol)id.symbol).offset + "($fp)");
 		}
 		return tmp;
 	}
@@ -190,20 +192,38 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 		ST tmp = templates.getInstanceOf("let");
 		tmp.add("localsSize", 4 * let.vars.size());
 		int offset = 1;
+		ST vars = templates.getInstanceOf("sequence");
 		for (Var v : let.vars) {
 			ST crtVar = templates.getInstanceOf("localVar");
 			crtVar.add("var", v.accept(this));
 			crtVar.add("offset", offset * 4);
 			offset++;
-			tmp.add("vars", crtVar);
+			vars.add("e", crtVar);
 		}
+		tmp.add("vars", vars);
 		tmp.add("body", let.body.accept(this));
 		return tmp;
 	}
 
 	@Override
 	public ST visit(Var v) {
-		return null;
+		ST res;
+		if (v.value != null) {
+			res = v.value.accept(this);
+		} else if (v.type.getText().equals("Int")) {
+			res = templates.getInstanceOf("literal");
+			res.add("value", intToIntConst.get(0));
+		} else if (v.type.getText().equals("String")) {
+			res = templates.getInstanceOf("literal");
+			res.add("value", strToStrConst.get(""));
+		} else if (v.type.getText().equals("Bool")) {
+			res = templates.getInstanceOf("literal");
+			res.add("value", "bool_const0");
+		} else {
+			res = templates.getInstanceOf("literal");
+			res.add("value", 0);
+		}
+		return res;
 	}
 
 	@Override

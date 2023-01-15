@@ -144,8 +144,11 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
 
     @Override
     public TypeSymbol visit(Let let) {
+        int offset = 1;
         for (Var v : let.vars) {
             v.accept(this);
+            ((IdSymbol) v.symbol).offset = offset * -4;
+            offset++;
         }
 
         return let.body.accept(this);
