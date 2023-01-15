@@ -34,6 +34,11 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
             if (f.symbol != null)
                 ((IdSymbol) f.symbol).parent = c.symbol;
             f.accept(this);
+            if (f instanceof Attribute && f.symbol != null) {
+                ((TypeSymbol) c.symbol).attrs.put(f.symbol.getName(), (IdSymbol)f.symbol);
+            } else if (f.symbol != null) {
+                ((TypeSymbol) c.symbol).meths.put(f.symbol.getName(), (MethodSymbol)f.symbol);
+            }
         }
 
         crtClass = old_self_type;

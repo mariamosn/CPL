@@ -4,13 +4,25 @@ import org.antlr.v4.runtime.Token;
 import org.stringtemplate.v4.ST;
 
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class TypeSymbol extends Symbol {
     public TypeSymbol parent;
     public Scope scope = null;
+    public Map<String, IdSymbol> attrs = new LinkedHashMap<>();
+    public Map<String, MethodSymbol> meths = new LinkedHashMap<>();
+    public Integer tag;
+    public static Integer nextTag = 5;
     public TypeSymbol(String name) {
         super(name);
         this.parent = null;
+    }
+
+    public TypeSymbol(String name, int tag) {
+        super(name);
+        this.parent = null;
+        this.tag = tag;
     }
 
     public TypeSymbol(String name, TypeSymbol parent) {
@@ -20,6 +32,16 @@ public class TypeSymbol extends Symbol {
         } else {
             this.parent = parent;
         }
+    }
+
+    public TypeSymbol(String name, TypeSymbol parent, int tag) {
+        super(name);
+        if (parent == null) {
+            this.parent = TypeSymbol.OBJECT;
+        } else {
+            this.parent = parent;
+        }
+        this.tag = tag;
     }
 
     public TypeSymbol(String name, Token parent) {
@@ -32,12 +54,23 @@ public class TypeSymbol extends Symbol {
         this.parent = (TypeSymbol) SymbolTable.globals.lookup(parent.getText(), "type");
     }
 
+    public TypeSymbol(String name, Token parent, int tag) {
+        super(name);
+        if (parent == null) {
+            this.parent = TypeSymbol.OBJECT;
+            return;
+        }
+
+        this.parent = (TypeSymbol) SymbolTable.globals.lookup(parent.getText(), "type");
+        this.tag = tag;
+    }
+
     // Symboluri aferente tipurilor, definite global
-    public static final TypeSymbol OBJECT   = new TypeSymbol("Object");
-    public static final TypeSymbol IO = new TypeSymbol("IO", OBJECT);
-    public static final TypeSymbol INT   = new TypeSymbol("Int", OBJECT);
-    public static final TypeSymbol STRING = new TypeSymbol("String", OBJECT);
-    public static final TypeSymbol BOOL  = new TypeSymbol("Bool", OBJECT);
+    public static final TypeSymbol OBJECT   = new TypeSymbol("Object", 0);
+    public static final TypeSymbol IO = new TypeSymbol("IO", OBJECT, 1);
+    public static final TypeSymbol INT   = new TypeSymbol("Int", OBJECT, 2);
+    public static final TypeSymbol STRING = new TypeSymbol("String", OBJECT, 3);
+    public static final TypeSymbol BOOL  = new TypeSymbol("Bool", OBJECT, 4);
     public static final TypeSymbol SELF_TYPE = new TypeSymbol("SELF_TYPE", OBJECT);
 
     public static TypeSymbol lub(TypeSymbol a, TypeSymbol b) {

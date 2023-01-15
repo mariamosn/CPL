@@ -27,6 +27,8 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
         }
 
         TypeSymbol sym = new TypeSymbol(c.name.getText(), c.parent);
+        sym.tag = TypeSymbol.nextTag;
+        TypeSymbol.nextTag++;
         if (!currentScope.add(sym, "type")) {
             SymbolTable.error(c.context, c.name,
                     "Class " + c.name.getText() + " is redefined");

@@ -6,7 +6,6 @@ public class DefaultScope implements Scope {
     
     public Map<String, Symbol> types = new LinkedHashMap<>();
     public Map<String, Symbol> methods = new LinkedHashMap<>();
-    // public Map<String, Symbol> attributes = new LinkedHashMap<>();
     public Map<String, Symbol> vars = new LinkedHashMap<>();
     
     private Scope parent;

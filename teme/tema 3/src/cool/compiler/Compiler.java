@@ -129,6 +129,7 @@ public class Compiler {
         DefinitionPassVisitor definitionPassVisitor = new DefinitionPassVisitor();
         ResolutionPassVisitor resolutionPassVisitor = new ResolutionPassVisitor();
         InheritanceCheckVisitor inheritanceCheckVisitor = new InheritanceCheckVisitor();
+        CodeGenVisitor codeGenVisitor = new CodeGenVisitor();
 
         ASTNode root = constructorVis.visit(globalTree);
         // System.out.print(root.accept(toStringVis));
@@ -136,7 +137,7 @@ public class Compiler {
         // Populate global scope.
         SymbolTable.defineBasicClasses();
 
-        // TODO Semantic analysis
+        // Semantic analysis
         root.accept(definitionPassVisitor);
         root.accept(resolutionPassVisitor);
         root.accept(inheritanceCheckVisitor);
@@ -145,5 +146,8 @@ public class Compiler {
             System.err.println("Compilation halted");
             return;
         }
+
+        // Codegen
+        System.out.println(root.accept(codeGenVisitor).render());
     }
 }
