@@ -396,7 +396,8 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 
 	@Override
 	public ST visit(New n) {
-		return null;
+		ST tmp = null;
+		return tmp;
 	}
 
 	public void addDispTable(TypeSymbol cls) {
@@ -485,6 +486,8 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 		meth.add("className", ((TypeSymbol)((MethodSymbol)method.symbol).parent).getName());
 		meth.add("methodName", ((MethodSymbol)method.symbol).getName());
 		meth.add("body", method.body.accept(this));
+		int nrStackFree = method.formals.size()*4;
+		meth.add("cntParams", nrStackFree);
 		return meth;
 	}
 

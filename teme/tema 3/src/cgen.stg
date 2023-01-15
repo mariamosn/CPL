@@ -96,7 +96,7 @@ initClass(className, parentName, attrs) ::= <<
     jr      $ra
 >>
 
-methodImpl(className, methodName, body) ::= <<
+methodImpl(className, methodName, body, cntParams) ::= <<
 <className>.<methodName>:
     addiu   $sp $sp -12
     sw      $fp 12($sp)
@@ -109,6 +109,7 @@ methodImpl(className, methodName, body) ::= <<
     lw      $s0 8($sp)
     lw      $ra 4($sp)
     addiu   $sp $sp 12
+    addiu   $sp $sp <cntParams> # params free
     jr      $ra
 >>
 
