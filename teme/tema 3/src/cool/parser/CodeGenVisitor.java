@@ -110,7 +110,13 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 
 	@Override
 	public ST visit(If iff) {
-		return null;
+		ST tmp = templates.getInstanceOf("if");
+		tmp.add("crt", tagCnt);
+		tagCnt++;
+		tmp.add("cond", iff.cond.accept(this));
+		tmp.add("thenBranch", iff.thenBranch.accept(this));
+		tmp.add("elseBranch", iff.elseBranch.accept(this));
+		return tmp;
 	}
 
 	@Override

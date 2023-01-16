@@ -187,6 +187,17 @@ new_self_type() ::= <<
     jalr    $t1
 >>
 
+if(crt, cond, thenBranch, elseBranch) ::= <<
+<cond>
+    lw      $t1 12($a0)     # bool slot
+    beqz    $t1 else<crt>
+<thenBranch>
+    b       endif<crt>
+else<crt>:
+<elseBranch>
+endif<crt>:
+>>
+
 swLine(offset) ::= <<
     sw      $a0 <offset>($s0)
 >>
