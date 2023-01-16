@@ -168,22 +168,33 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 
 	@Override
 	public ST visit(Minus minus) {
-		return null;
+		ST tmp = templates.getInstanceOf("minus");
+		tmp.add("left", minus.left.accept(this));
+		tmp.add("right", minus.right.accept(this));
+		return tmp;
 	}
 
 	@Override
 	public ST visit(Mult mult) {
-		return null;
+		ST tmp = templates.getInstanceOf("mult");
+		tmp.add("left", mult.left.accept(this));
+		tmp.add("right", mult.right.accept(this));
+		return tmp;
 	}
 
 	@Override
 	public ST visit(Div div) {
-		return null;
+		ST tmp = templates.getInstanceOf("div");
+		tmp.add("left", div.left.accept(this));
+		tmp.add("right", div.right.accept(this));
+		return tmp;
 	}
 
 	@Override
 	public ST visit(Neg neg) {
-		return null;
+		ST tmp = templates.getInstanceOf("neg");
+		tmp.add("val", neg.expr.accept(this));
+		return tmp;
 	}
 
 	@Override
