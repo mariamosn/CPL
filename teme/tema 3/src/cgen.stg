@@ -216,6 +216,20 @@ not(crt, val) ::= <<
 not<crt>:
 >>
 
+plus(right, left) ::= <<
+<left>
+    sw      $a0 0($sp)
+    addiu   $sp $sp -4
+<right>
+    jal     Object.copy
+    lw      $t1 4($sp)
+    addiu   $sp $sp 4
+    lw      $t1 12($t1)     # int slot
+    lw      $t2 12($a0)     # int slot
+    add     $t1 $t1 $t2
+    sw      $t1 12($a0)     # int slot
+>>
+
 swLine(offset) ::= <<
     sw      $a0 <offset>($s0)
 >>
@@ -255,16 +269,6 @@ prototype(className, tag, size, attrs) ::= <<
 
 literal(value) ::= <<
     la      $a0 <value>
->>
-
-plus(e1, e2, dStr) ::= <<
-<e1>
-	sw $a0 0($sp)
-	addiu $sp $sp -4
-<e2>
-	lw $t1 4($sp)
-	add $a0 $t1 $a0
-	addiu $sp $sp 4		<if(dStr)># <dStr><else><endif>
 >>
 
 uminus(e1, dStr) ::= <<

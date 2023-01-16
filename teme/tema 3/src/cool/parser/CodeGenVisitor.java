@@ -160,7 +160,10 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 
 	@Override
 	public ST visit(Plus plus) {
-		return null;
+		ST tmp = templates.getInstanceOf("plus");
+		tmp.add("left", plus.left.accept(this));
+		tmp.add("right", plus.right.accept(this));
+		return tmp;
 	}
 
 	@Override
