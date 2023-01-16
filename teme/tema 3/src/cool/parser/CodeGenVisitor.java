@@ -664,6 +664,13 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 
 	@Override
 	public ST visit(Case c) {
+		/*
+		ST value = c.value.accept(this);
+		ST caseST = templates.getInstanceOf("case");
+		// case(body, crt, fileName, crtLine, caseOpts)
+		caseST.add("className", ((TypeSymbol)((MethodSymbol)method.symbol).parent).getName());
+		
+		 */
 		return null;
 	}
 

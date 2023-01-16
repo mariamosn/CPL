@@ -377,7 +377,7 @@ endwhile<crt>:
     move    $a0 $zero
 >>
 
-case(body, crt, fileName, crtLine, caseOpt)::=<<
+case(body, crt, fileName, crtLine, caseOpts)::=<<
     addiu   $sp $sp -4   # locals alloc
     move    $s0 $a0
 <body>                  #body
@@ -388,11 +388,20 @@ case(body, crt, fileName, crtLine, caseOpt)::=<<
 case<crt>:
     sw      $a0 -4($fp)
     lw      $t1 0($a0)      # class tag
-<CaseOpt>
+<CaseOpts>
     lw      $a0 -4($fp)
     jal     _case_abort
 endcase<cnt>:
     addiu   $sp $sp 4    # locals free
+
+>>
+
+CaseOpt(tagClass, maxTagChildren, value, crt, crtNext)::=<<
+    blt     $t1 <tagClass> casebranch<crtNext>
+    bgt     $t1 <maxTagChildren> casebranch<crtNext>
+<value>
+     b       endcase<crt>
+casebranch<crtNext>:
 
 >>
 

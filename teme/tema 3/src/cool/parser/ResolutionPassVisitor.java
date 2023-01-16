@@ -158,7 +158,7 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
     public TypeSymbol visit(Case c) {
         TypeSymbol value_type = null;
         if (c.value != null) {
-            c.value.accept(this);
+            value_type = c.value.accept(this);
             if (c.value.symbol != null)
                 ((IdSymbol) c.value.symbol).type = value_type;
         }
@@ -188,6 +188,7 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
         }
 
         c.value.scope = c.scope;
+        ((DefaultScope)c.value.scope).add(c.name.symbol, "var");
         TypeSymbol val_type = c.value.accept(this);
         return val_type;
     }
@@ -238,6 +239,7 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
             sym = (IdSymbol) id.scope.lookup(id.token.getText(), "var");
             id.symbol = sym;
         }
+
         if (sym != null)
             return ((IdSymbol) id.symbol).type;
         return null;

@@ -220,8 +220,10 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
 
     @Override
     public Void visit(CaseOpt c) {
-        IdSymbol sym = new IdSymbol("caseOpt");
+        IdSymbol sym = new IdSymbol(c.name.token.getText());
         c.scope = new DefaultScope(currentScope);
+        DefaultScope old_crtscope = (DefaultScope) currentScope;
+        currentScope = c.scope;
         c.symbol = sym;
 
         if (c.name.token.getText().equals("self")) {
@@ -231,6 +233,11 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
         }
 
         c.scope.add(sym, "var");
+        c.name.accept(this);
+        ((IdSymbol)c.name.symbol).parent = c.symbol;
+        c.value.accept(this);
+
+        currentScope = old_crtscope;
 
         return null;
     }
