@@ -155,7 +155,15 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 
 	@Override
 	public ST visit(Relational rel) {
-		return null;
+		ST tmp = null;
+		if (rel.token.getText().equals("=")) {
+			tmp = templates.getInstanceOf("eq");
+			tmp.add("left", rel.left.accept(this));
+			tmp.add("right", rel.right.accept(this));
+			tmp.add("crt", tagCnt);
+			tagCnt++;
+		}
+		return tmp;
 	}
 
 	@Override

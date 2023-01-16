@@ -284,6 +284,21 @@ swLine(offset) ::= <<
     sw      $a0 <offset>($s0)
 >>
 
+eq(left, right, crt) ::= <<
+<left>
+    sw      $a0 0($sp)
+    addiu   $sp $sp -4
+<right>
+    lw      $t1 4($sp)
+    addiu   $sp $sp 4
+    move    $t2 $a0
+    la      $a0 bool_const1
+    beq     $t1 $t2 eq<crt>
+    la      $a1 bool_const0
+    jal     equality_test
+eq<crt>:
+>>
+
 tabLine(content) ::= <<
     <content>
 >>
@@ -366,17 +381,6 @@ rel_le(e1, e2, cnt, dStr) ::= <<
 lessequal<cnt>:
     li $a0 1
 end<cnt>:		<if(dStr)># <dStr><else><endif>
->>
-
-iff(cond_expr, then_expr, else_expr, cnt, dStr) ::= <<
-<cond_expr>
-    beqz $a0, falseB<cnt>
-    <then_expr>
-    j end<cnt>
-falseB<cnt>:
-    <else_expr>
-end<cnt>:		<if(dStr)># <dStr><else><endif>
-
 >>
 
 param(p) ::= <<
