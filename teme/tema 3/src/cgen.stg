@@ -381,7 +381,7 @@ case(body, crt, fileName, crtLine, caseOpts)::=<<
     addiu   $sp $sp -4   # locals alloc
     move    $s0 $a0
 <body>                  #body
-    bnez    $a0 case_<crt>
+    bnez    $a0 case<crt>
     la      $a0 <fileName>
     li      $t1 <crtLine>
     jal     _case_abort2
