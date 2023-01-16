@@ -94,6 +94,18 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 	void makeTags(TypeSymbol typeCurrent){
 		// porneste de la object
 		typeCurrent.tag = crtTag;
+		// TODO: moved here from addBasicClassInfo
+		addConstStr(typeCurrent.getName());
+		// TODO: moved here from addBasicClassInfo
+		classesConstStrNames.add("e",
+				templates.getInstanceOf("wordLine").add("name", strToStrConst.get(typeCurrent.getName())));
+		// TODO: moved here from addBasicClassInfo
+		prototypesNames.add("e",
+				templates.getInstanceOf("wordLine").add("name", typeCurrent.getName() + "_protObj"));
+		// TODO: moved here from addBasicClassInfo
+		prototypesNames.add("e",
+				templates.getInstanceOf("wordLine").add("name", typeCurrent.getName() + "_init"));
+
 		//System.out.println(" tag-ul este "+ crtTag + " la clasa "+ typeCurrent.getName());
 		// parcurg lista de copii pentru a asigna tag-uri
 		for (Map.Entry<String, TypeSymbol> e1 : typeCurrent.childrenClass.entrySet()) {
@@ -340,13 +352,29 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 		// adauga numele clasei in constStrs
 		//  si in classesConstStrNames
 		//  si in prototypesNames (sub forma <clasa>_protObj, <clasa>_init)
+		// TODO: moved to makeTags
+		/*
 		addConstStr(cls.getName());
+
+		 */
+		// TODO: moved to makeTags
+		/*
 		classesConstStrNames.add("e",
 				templates.getInstanceOf("wordLine").add("name", strToStrConst.get(cls.getName())));
+
+		 */
+		// TODO: moved to makeTags
+		/*
 		prototypesNames.add("e",
 				templates.getInstanceOf("wordLine").add("name", cls.getName() + "_protObj"));
+
+		 */
+		// TODO: moved to makeTags
+		/*
 		prototypesNames.add("e",
 				templates.getInstanceOf("wordLine").add("name", cls.getName()+ "_init"));
+
+		 */
 		// construieste protoObj si adauga-l in prototypes
 		addProtoType(cls);
 		addDispTable(cls);
@@ -448,7 +476,6 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 	}
 	@Override
 	public ST visit(Program program) {
-		makeTags(TypeSymbol.OBJECT);
 		constStrs = templates.getInstanceOf("sequence");
 		constInts = templates.getInstanceOf("sequence");
 		classesConstStrNames = templates.getInstanceOf("sequence");;
@@ -459,6 +486,9 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 		methods = templates.getInstanceOf("sequence");
 
 		addConstStr("");
+
+		// TODO: moved here from the first line in method
+		makeTags(TypeSymbol.OBJECT);
 
 		// adauga informatie legata de clasele default (Object, IO, Int, String, Bool)
 		addClassBasicInfo(TypeSymbol.OBJECT, null);
@@ -481,6 +511,9 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 		programST.add("dispatchTables", dispatchTables);
 		programST.add("initRoutines", initRoutines);
 		programST.add("methods", methods);
+		programST.add("intTag", TypeSymbol.INT.tag);
+		programST.add("strTag", TypeSymbol.STRING.tag);
+		programST.add("boolTag", TypeSymbol.BOOL.tag);
 		return programST;
 	}
 

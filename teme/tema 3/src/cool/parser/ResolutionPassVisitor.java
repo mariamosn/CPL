@@ -19,7 +19,10 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
         if (c.scope == null || c.scope.lookup(c.name.getText(), "type") == null)
             return null;
         crtClass = (TypeSymbol) c.scope.lookup(c.name.getText(), "type");
-
+        if(c.parent == null) {
+            // se adauga copilul clasei parinte Object
+            TypeSymbol.OBJECT.addChild((TypeSymbol) c.symbol);
+        }
         if (c.parent != null && c.scope.lookup(c.parent.getText(), "type") == null) {
             SymbolTable.error(c.context, c.parent,
                     "Class " + c.name.getText() + " has undefined parent " + c.parent.getText());
