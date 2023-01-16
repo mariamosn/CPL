@@ -18,6 +18,8 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 	int tagCnt = 0;
 	int crtCase = 0;
 	int crtBranchCase = 0;
+
+	int crtTag = 0;
 	String filename = "";
 	static STGroupFile templates = new STGroupFile("cgen.stg");
 	public Map<String, String> strToStrConst = new LinkedHashMap<>();
@@ -88,6 +90,53 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 		return intToIntConst.get(n);
 	}
 
+
+	void makeTags(TypeSymbol typeCurrent){
+		// porneste de la object
+		typeCurrent.tag = crtTag;
+		//System.out.println(" tag-ul este "+ crtTag + " la clasa "+ typeCurrent.getName());
+		// parcurg lista de copii pentru a asigna tag-uri
+		for (Map.Entry<String, TypeSymbol> e1 : typeCurrent.childrenClass.entrySet()) {
+			crtTag += 1;
+			if (e1.getValue() != TypeSymbol.SELF_TYPE) {
+				makeTags(e1.getValue());
+			}
+		}
+
+	}
+
+	int findMaxTagChildrenTree(TypeSymbol typeCurrent){
+		//iau nodul parinte
+		TypeSymbol typeParent = typeCurrent.parent;
+	//	System.out.println(" la clasa "+ typeCurrent.getName() + " cu parinte "+ typeParent.getName());
+		// caut al catelea copil este in lista si iau urmatorul copil.
+	//	for (Map.Entry<String, TypeSymbol> e1 : typeParent.childrenClass.entrySet()) {
+	//		if (e1.getValue() == typeCurrent) {
+	//			if(e1.)
+	//		}
+	//	}
+		if(typeCurrent.childrenClass.size()>0) {
+			Iterator<Map.Entry<String, TypeSymbol>> iter1 = typeParent.childrenClass.entrySet().iterator();
+			int poz = 0;
+			while (iter1.hasNext()) {
+				Map.Entry<String, TypeSymbol> e1 = iter1.next();
+				if(e1.getValue() == typeCurrent){
+					//System.out.println(" gasit copil ");
+					// daca exista copil urmator
+					if(iter1.hasNext()){
+						Map.Entry<String, TypeSymbol> e2 = iter1.next();
+					//	System.out.println(" gasit tag la  "+ e2.getValue().getName()+ " cu tag "+ e2.getValue().tag);
+						return e2.getValue().tag - 1;
+					}else{
+					//	System.out.println(" copil extremitate ");
+						return findMaxTagChildrenTree(typeParent);
+					}
+				}
+			}
+		}
+		return typeCurrent.tag;
+
+	}
 
 
 	@Override
@@ -399,6 +448,7 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 	}
 	@Override
 	public ST visit(Program program) {
+		makeTags(TypeSymbol.OBJECT);
 		constStrs = templates.getInstanceOf("sequence");
 		constInts = templates.getInstanceOf("sequence");
 		classesConstStrNames = templates.getInstanceOf("sequence");;
@@ -666,7 +716,8 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 		ST value = c.value.accept(this);
 		ST optST = templates.getInstanceOf("CaseOpt");
 		optST.add("tagClass", ((IdSymbol) c.symbol).type.tag);
-		optST.add("maxTagChildren", ((IdSymbol) c.symbol).type.tag);
+		int maxTag = findMaxTagChildrenTree(((IdSymbol) c.symbol).type);
+		optST.add("maxTagChildren", maxTag);
 		optST.add("value", value);
 		optST.add("crt", crtCase);
 
@@ -681,6 +732,13 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 		ST value = c.value.accept(this);
 		ST caseST = templates.getInstanceOf("case");
 		// case(body, crt, fileName, crtLine, caseOpts)
+		Collections.sort(c.options, new Comparator<CaseOpt>() {
+			@Override
+			public int compare(CaseOpt u1, CaseOpt u2) {
+				return  ((IdSymbol) u2.symbol).type.tag.compareTo( ((IdSymbol) u1.symbol).type.tag);
+			}
+		});
+
 		LinkedList<ST> branches = new LinkedList<>();
 		for (var opt : c.options) {
 			ST branch = opt.accept(this);

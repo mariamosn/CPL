@@ -100,6 +100,11 @@ public class SymbolTable {
         globals.add(TypeSymbol.BOOL, "type");
 
         globals.add(TypeSymbol.SELF_TYPE, "type");
+
+        TypeSymbol.OBJECT.addChild(TypeSymbol.IO);
+        TypeSymbol.OBJECT.addChild(TypeSymbol.INT);
+        TypeSymbol.OBJECT.addChild(TypeSymbol.STRING);
+        TypeSymbol.OBJECT.addChild(TypeSymbol.BOOL);
     }
     
     /**

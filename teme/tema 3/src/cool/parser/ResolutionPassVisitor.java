@@ -27,6 +27,9 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
         } else if (c.parent != null) {
             ((TypeSymbol) c.symbol).parent = (TypeSymbol) c.scope.lookup(c.parent.getText(), "type");
             ((DefaultScope) c.scope).mergeScope(((DefaultScope) ((TypeSymbol) c.symbol).parent.scope));
+
+            // se adauga copilul clasei parinte
+            ((TypeSymbol) c.symbol).parent.addChild((TypeSymbol) c.symbol);
         }
         ((TypeSymbol) c.symbol).scope = c.scope;
 

@@ -1,8 +1,8 @@
 package cool.structures;
 
 import org.antlr.v4.runtime.Token;
-import org.stringtemplate.v4.ST;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -14,6 +14,8 @@ public class TypeSymbol extends Symbol {
     public Map<String, MethodSymbol> meths = new LinkedHashMap<>();
     public Map<String, Integer> methodOffset = new LinkedHashMap<>();
     public Integer tag;
+
+    public Map<String, TypeSymbol> childrenClass = new LinkedHashMap<>();
     public static Integer nextTag = 5;
     public TypeSymbol(String name) {
         super(name);
@@ -135,6 +137,7 @@ public class TypeSymbol extends Symbol {
         copySym.type = SELF_TYPE;
         copySym.parent = OBJECT;
         OBJECT.scope.add(copySym, "method");
+
     }
 
     private static void ioSetup() {
@@ -209,4 +212,10 @@ public class TypeSymbol extends Symbol {
         }
         return cnt;
     }
+
+    public void addChild(TypeSymbol typeClass){
+        childrenClass.put(typeClass.name, typeClass);
+    }
+
+
 }
