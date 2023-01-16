@@ -157,7 +157,19 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 	public ST visit(Relational rel) {
 		ST tmp = null;
 		if (rel.token.getText().equals("=")) {
-			tmp = templates.getInstanceOf("eq");
+			tmp = templates.getInstanceOf("cmp_eq");
+			tmp.add("left", rel.left.accept(this));
+			tmp.add("right", rel.right.accept(this));
+			tmp.add("crt", tagCnt);
+			tagCnt++;
+		} else if (rel.token.getText().equals("<")) {
+			tmp = templates.getInstanceOf("cmp_lt");
+			tmp.add("left", rel.left.accept(this));
+			tmp.add("right", rel.right.accept(this));
+			tmp.add("crt", tagCnt);
+			tagCnt++;
+		} else if (rel.token.getText().equals("<=")) {
+			tmp = templates.getInstanceOf("cmp_le");
 			tmp.add("left", rel.left.accept(this));
 			tmp.add("right", rel.right.accept(this));
 			tmp.add("crt", tagCnt);
