@@ -396,8 +396,13 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 
 	@Override
 	public ST visit(New n) {
-		ST tmp = templates.getInstanceOf("new");
-		tmp.add("name", n.type.getText());
+		ST tmp;
+		if (!n.type.getText().equals("SELF_TYPE")) {
+			tmp = templates.getInstanceOf("new");
+			tmp.add("name", n.type.getText());
+		} else {
+			tmp = templates.getInstanceOf("new_self_type");
+		}
 		return tmp;
 	}
 
@@ -435,6 +440,37 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 
 		// adauga dispatchTable-ul la dispatchTables
 		dispatchTables.add("e", dispTable);
+	}
+
+	private Integer backupMethodOff(TypeSymbol cls, String method) {
+		Map<String, String> methodToClass = new LinkedHashMap<>();
+		LinkedList<String> methodNames = new LinkedList<>();
+		Stack<TypeSymbol> st = new Stack<>();
+		TypeSymbol crt = cls;
+		while (crt != null) {
+			st.push(crt);
+			crt = crt.parent;
+		}
+		while (!st.isEmpty()) {
+			crt = st.pop();
+			for (String meth : crt.meths.keySet()) {
+				if (!methodToClass.containsKey(meth)) {
+					methodToClass.put(meth, crt.getName());
+					methodNames.add(meth);
+				} else {
+					methodToClass.replace(meth, crt.getName());
+				}
+			}
+		}
+		int offset = 0;
+		for (String meth : methodNames) {
+			if (meth.equals(method)) {
+				return offset;
+			}
+			offset += 4;
+		}
+
+		return null;
 	}
 
 	@Override
@@ -532,8 +568,12 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 		tmp.add("crtLine", explDisp.token.getLine());
 		if (explDisp.atType != null)
 			tmp.add("atType", explDisp.atType.getText());
-		tmp.add("offsetInDispTable",
-				((DispSymbol)explDisp.symbol).type.methodOffset.get(explDisp.method.token.getText()));
+		Integer off = ((DispSymbol)explDisp.symbol).type.methodOffset.get(explDisp.method.token.getText());
+		if (off != null)
+			tmp.add("offsetInDispTable", off);
+		else
+			tmp.add("offsetInDispTable",
+					backupMethodOff(((DispSymbol)explDisp.symbol).type, explDisp.method.token.getText()));
 		return tmp;
 	}
 
@@ -559,7 +599,11 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 		getFilename(implDisp.context);
 		tmp.add("fileName", strToStrConst.get(filename));
 		tmp.add("crtLine", implDisp.token.getLine());
-		tmp.add("offsetInDispTable", crtClass.methodOffset.get(implDisp.method.token.getText()));
+		Integer off = crtClass.methodOffset.get(implDisp.method.token.getText());
+		if (off != null)
+			tmp.add("offsetInDispTable", off);
+		else
+			tmp.add("offsetInDispTable", backupMethodOff(crtClass, implDisp.method.token.getText()));
 
 		return tmp;
 	}
