@@ -237,6 +237,11 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
         if (id.scope != null) {
             sym = (IdSymbol) id.scope.lookup(id.token.getText(), "var");
             id.symbol = sym;
+            /*
+            System.out.println(id.token.getText() + " attr: " + ((IdSymbol)id.symbol).isAttr +
+                    " type: " + ((IdSymbol)id.symbol).type + " offset: " + ((IdSymbol)id.symbol).offset);
+
+             */
         }
         if (sym != null)
             return ((IdSymbol) id.symbol).type;
@@ -414,6 +419,7 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
 
     @Override
     public TypeSymbol visit(IsVoid isVoid) {
+        isVoid.e.accept(this);
         return TypeSymbol.BOOL;
     }
 
