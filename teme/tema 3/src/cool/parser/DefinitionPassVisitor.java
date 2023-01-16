@@ -283,6 +283,7 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
                     "Cannot assign to self");
         }
         assign.id.scope = currentScope;
+        assign.id.accept(this);
         assign.expr.accept(this);
         return null;
     }

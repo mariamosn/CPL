@@ -149,7 +149,6 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 		} else {
 			assignST.add("var", ((IdSymbol) assign.id.symbol).offset + "($fp)");
 		}
-		//assignST.add("content", "lw      $a0 " + ((IdSymbol)assign.id.symbol).offset + "($s0)");
 		return assignST;
 	}
 
@@ -228,7 +227,12 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 
 	@Override
 	public ST visit(While w) {
-		return null;
+		ST tmp = templates.getInstanceOf("while");
+		tmp.add("crt", tagCnt);
+		tagCnt++;
+		tmp.add("cond", w.cond.accept(this));
+		tmp.add("body", w.body.accept(this));
+		return tmp;
 	}
 
 	@Override
@@ -411,8 +415,6 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 		addClassBasicInfo(TypeSymbol.STRING, null);
 		addClassBasicInfo(TypeSymbol.BOOL, null);
 
-		// TODO: implemntare pentru metodele din clasele default
-
 		// viziteaza clasele
 		for (var c : program.stmts) {
 			c.accept(this);
@@ -582,7 +584,6 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 		if (attribute.value != null) {
 			res = attribute.value.accept(this);
 		}
-		// TODO: aici trebuie adaugat cumva si offset-ul ala [ex. sw      $a0 16($s0)]
 		return res;
 	}
 

@@ -366,60 +366,33 @@ literal(value) ::= <<
     la      $a0 <value>
 >>
 
-uminus(e1, dStr) ::= <<
-<e1>
-    subu $a0, $zero, $a0		<if(dStr)># <dStr><else><endif>
+while(crt, cond, body) ::= <<
+while<crt>:
+<cond>
+    lw      $t1 12($a0)     # bool slot
+    beqz    $t1 endwhile<crt>
+<body>
+    b       while<crt>
+endwhile<crt>:
+    move    $a0 $zero
 >>
 
-rel_eq(e1, e2, cnt, dStr) ::= <<
-<e1>
-	sw $a0 0($sp)
-	addiu $sp $sp -4
-<e2>
-	lw $t1 4($sp)
-	beq $a0 $t1 equal<cnt>
-	li $a0 0
-	j end<cnt>
-equal<cnt>:
-    li $a0 1
-end<cnt>:		<if(dStr)># <dStr><else><endif>
->>
+case(body, crt, fileName, crtLine, caseOpt)::=<<
+    addiu   $sp $sp -4   # locals alloc
+    move    $s0 $a0
+<body>                  #body
+    bnez    $a0 case_<crt>
+    la      $a0 <fileName>
+    li      $t1 <crtLine>
+    jal     _case_abort2
+case<crt>:
+    sw      $a0 -4($fp)
+    lw      $t1 0($a0)      # class tag
+<CaseOpt>
+    lw      $a0 -4($fp)
+    jal     _case_abort
+endcase<cnt>:
+    addiu   $sp $sp 4    # locals free
 
-rel_l(e1, e2, cnt, dStr) ::= <<
-<e1>
-	sw $a0 0($sp)
-	addiu $sp $sp -4
-<e2>
-	lw $t1 4($sp)
-	blt $a0 $t1 less<cnt>
-	li $a0 0
-	j end<cnt>
-less<cnt>:
-    li $a0 1
-end<cnt>:		<if(dStr)># <dStr><else><endif>
->>
-
-rel_le(e1, e2, cnt, dStr) ::= <<
-<e1>
-	sw $a0 0($sp)
-	addiu $sp $sp -4
-<e2>
-	lw $t1 4($sp)
-	blt $a0 $t1 lessequal<cnt>
-	li $a0 0
-	j end<cnt>
-lessequal<cnt>:
-    li $a0 1
-end<cnt>:		<if(dStr)># <dStr><else><endif>
->>
-
-param(p) ::= <<
-    <p>
-    sw $a0 0($sp)
-    addiu $sp $sp -4
->>
-
-vardef(name, value, dStr) ::= <<
-<name>: w <value>
 >>
 

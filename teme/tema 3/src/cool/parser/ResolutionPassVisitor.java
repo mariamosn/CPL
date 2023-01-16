@@ -237,11 +237,6 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
         if (id.scope != null) {
             sym = (IdSymbol) id.scope.lookup(id.token.getText(), "var");
             id.symbol = sym;
-            /*
-            System.out.println(id.token.getText() + " attr: " + ((IdSymbol)id.symbol).isAttr +
-                    " type: " + ((IdSymbol)id.symbol).type + " offset: " + ((IdSymbol)id.symbol).offset);
-
-             */
         }
         if (sym != null)
             return ((IdSymbol) id.symbol).type;
@@ -414,6 +409,7 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
             SymbolTable.error(w.context, w.cond.token,
                     "While condition has type " + cond_type + " instead of Bool");
         }
+        w.body.accept(this);
         return TypeSymbol.OBJECT;
     }
 
