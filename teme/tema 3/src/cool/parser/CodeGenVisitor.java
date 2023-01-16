@@ -16,6 +16,8 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 	int int_const_cnt = 0;
 	int cnt = 0;
 	int tagCnt = 0;
+	int crtCase = 0;
+	int crtBranchCase = 0;
 	String filename = "";
 	static STGroupFile templates = new STGroupFile("cgen.stg");
 	public Map<String, String> strToStrConst = new LinkedHashMap<>();
@@ -659,19 +661,40 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 
 	@Override
 	public ST visit(CaseOpt c) {
-		return null;
+		// addClassBasicInfo((TypeSymbol) c.symbol, null);
+		// CaseOpt(tagClass, maxTagChildren, value, crt, crtNext)
+		ST value = c.value.accept(this);
+		ST optST = templates.getInstanceOf("CaseOpt");
+		optST.add("tagClass", ((IdSymbol) c.symbol).type.tag);
+		optST.add("maxTagChildren", ((IdSymbol) c.symbol).type.tag);
+		optST.add("value", value);
+		optST.add("crt", crtCase);
+
+		optST.add("crtNext", crtBranchCase);
+		crtBranchCase += 1;
+
+		return optST;
 	}
 
 	@Override
 	public ST visit(Case c) {
-		/*
 		ST value = c.value.accept(this);
 		ST caseST = templates.getInstanceOf("case");
 		// case(body, crt, fileName, crtLine, caseOpts)
-		caseST.add("className", ((TypeSymbol)((MethodSymbol)method.symbol).parent).getName());
-		
-		 */
-		return null;
+		LinkedList<ST> branches = new LinkedList<>();
+		for (var opt : c.options) {
+			ST branch = opt.accept(this);
+			branches.add(branch);
+		}
+		caseST.add("body",value);
+		caseST.add("crt", crtCase);
+		crtCase += 1;
+		getFilename(c.context);
+		caseST.add("fileName", strToStrConst.get(filename));
+		caseST.add("crtLine", c.token.getLine());
+		caseST.add("caseOpts", branches);
+
+		return caseST;
 	}
 
 	private void getFilename(ParserRuleContext context) {

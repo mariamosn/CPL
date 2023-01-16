@@ -388,10 +388,10 @@ case(body, crt, fileName, crtLine, caseOpts)::=<<
 case<crt>:
     sw      $a0 -4($fp)
     lw      $t1 0($a0)      # class tag
-<CaseOpts>
+<caseOpts>
     lw      $a0 -4($fp)
     jal     _case_abort
-endcase<cnt>:
+endcase<crt>:
     addiu   $sp $sp 4    # locals free
 
 >>

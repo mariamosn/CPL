@@ -221,6 +221,7 @@ public class DefinitionPassVisitor implements ASTVisitor<Void> {
     @Override
     public Void visit(CaseOpt c) {
         IdSymbol sym = new IdSymbol(c.name.token.getText());
+        sym.offset = -4;
         c.scope = new DefaultScope(currentScope);
         DefaultScope old_crtscope = (DefaultScope) currentScope;
         currentScope = c.scope;
