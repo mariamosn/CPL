@@ -198,6 +198,15 @@ else<crt>:
 endif<crt>:
 >>
 
+isVoid(val, crt) ::= <<
+<val>
+    move    $t1 $a0
+    la      $a0 bool_const1
+    beqz    $t1 isvoid<crt>
+    la      $a0 bool_const0
+isvoid<crt>:
+>>
+
 swLine(offset) ::= <<
     sw      $a0 <offset>($s0)
 >>

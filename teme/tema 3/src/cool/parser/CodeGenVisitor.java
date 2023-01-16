@@ -234,7 +234,11 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 
 	@Override
 	public ST visit(IsVoid isVoid) {
-		return null;
+		ST tmp = templates.getInstanceOf("isVoid");
+		tmp.add("crt", tagCnt);
+		tagCnt++;
+		tmp.add("val", isVoid.e.accept(this));
+		return tmp;
 	}
 
 
