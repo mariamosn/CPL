@@ -207,6 +207,15 @@ isVoid(val, crt) ::= <<
 isvoid<crt>:
 >>
 
+not(crt, val) ::= <<
+<val>
+    lw      $t1 12($a0)     # bool slot
+    la      $a0 bool_const1
+    beqz    $t1 not<crt>
+    la      $a0 bool_const0
+not<crt>:
+>>
+
 swLine(offset) ::= <<
     sw      $a0 <offset>($s0)
 >>

@@ -185,7 +185,11 @@ public class CodeGenVisitor implements ASTVisitor<ST> {
 
 	@Override
 	public ST visit(Not not) {
-		return null;
+		ST tmp = templates.getInstanceOf("not");
+		tmp.add("crt", tagCnt);
+		tagCnt++;
+		tmp.add("val", not.expr.accept(this));
+		return tmp;
 	}
 
 	@Override
