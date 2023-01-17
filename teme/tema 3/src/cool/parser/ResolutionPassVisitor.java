@@ -267,6 +267,18 @@ public class ResolutionPassVisitor implements ASTVisitor<TypeSymbol> {
         TypeSymbol then_type = iff.thenBranch.accept(this);
         TypeSymbol else_type = iff.elseBranch.accept(this);
 
+        if (then_type == TypeSymbol.SELF_TYPE) {
+            then_type = crtClass;
+        }
+        if (else_type == TypeSymbol.SELF_TYPE) {
+            else_type = crtClass;
+        }
+        /*
+        System.out.println(iff.cond.token.getText() + " " + iff.thenBranch.token.getText() + " " +
+                iff.elseBranch.token.getText() + " " + " | then type: " + then_type + " " + "else type: " + else_type +
+                " | " + crtClass);
+
+         */
         return TypeSymbol.lub(then_type, else_type);
     }
 

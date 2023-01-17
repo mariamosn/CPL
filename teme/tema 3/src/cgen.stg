@@ -400,8 +400,11 @@ CaseOpt(tagClass, maxTagChildren, value, crt, crtNext)::=<<
     blt     $t1 <tagClass> casebranch<crtNext>
     bgt     $t1 <maxTagChildren> casebranch<crtNext>
 <value>
-     b       endcase<crt>
+    b       endcase<crt>
 casebranch<crtNext>:
 
 >>
 
+void() ::= <<
+    move    $a0 $zero
+>>
