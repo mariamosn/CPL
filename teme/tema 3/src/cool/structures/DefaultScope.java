@@ -23,6 +23,8 @@ public class DefaultScope implements Scope {
 
     @Override
     public boolean add(Symbol sym, String type) {
+        if (sym == null || sym.name == null)
+            return false;
         Map<String, Symbol> aux = new LinkedHashMap<>();
         if (type.equals("type")) {
             aux = types;
